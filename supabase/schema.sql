@@ -15,6 +15,16 @@ create table if not exists public.transactions (
   updated_at timestamptz not null default now()
 );
 
+-- Migración segura: CREATE TABLE IF NOT EXISTS no actualiza tablas antiguas.
+alter table public.transactions add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table public.transactions add column if not exists type text not null default 'expense';
+alter table public.transactions add column if not exists amount numeric(12,2) not null default 0;
+alter table public.transactions add column if not exists description text not null default 'Movimiento';
+alter table public.transactions add column if not exists category text not null default 'Otros gastos';
+alter table public.transactions add column if not exists transaction_date date not null default current_date;
+alter table public.transactions add column if not exists notes text;
+alter table public.transactions add column if not exists created_at timestamptz not null default now();
+alter table public.transactions add column if not exists updated_at timestamptz not null default now();
 create index if not exists transactions_user_date_idx
   on public.transactions (user_id, transaction_date desc);
 
@@ -59,6 +69,12 @@ create table if not exists public.bank_accounts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.bank_accounts add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table public.bank_accounts add column if not exists name text not null default 'Cuenta';
+alter table public.bank_accounts add column if not exists account_type text not null default 'Cuenta corriente';
+alter table public.bank_accounts add column if not exists balance_eur numeric(14,2) not null default 0;
+alter table public.bank_accounts add column if not exists created_at timestamptz not null default now();
+alter table public.bank_accounts add column if not exists updated_at timestamptz not null default now();
 create index if not exists bank_accounts_user_idx on public.bank_accounts(user_id);
 
 create table if not exists public.investment_positions (
@@ -76,6 +92,17 @@ create table if not exists public.investment_positions (
   updated_at timestamptz not null default now(),
   unique(user_id,ticker)
 );
+alter table public.investment_positions add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table public.investment_positions add column if not exists name text not null default 'Activo';
+alter table public.investment_positions add column if not exists ticker text not null default 'UNKNOWN';
+alter table public.investment_positions add column if not exists asset_type text not null default 'other';
+alter table public.investment_positions add column if not exists quantity numeric(20,8) not null default 0;
+alter table public.investment_positions add column if not exists average_cost_eur numeric(20,8) not null default 0;
+alter table public.investment_positions add column if not exists current_price_eur numeric(20,8);
+alter table public.investment_positions add column if not exists quote_currency text not null default 'EUR';
+alter table public.investment_positions add column if not exists quote_updated_at timestamptz;
+alter table public.investment_positions add column if not exists created_at timestamptz not null default now();
+alter table public.investment_positions add column if not exists updated_at timestamptz not null default now();
 create index if not exists investment_positions_user_idx on public.investment_positions(user_id);
 
 create table if not exists public.investment_transactions (
@@ -91,35 +118,11 @@ create table if not exists public.investment_transactions (
   trade_date date not null default current_date,
   created_at timestamptz not null default now()
 );
-create index if not exists investment_transactions_user_date_idx on public.investment_transactions(user_id,trade_date desc);
-
-create table if not exists public.dividends (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  position_id uuid references public.investment_positions(id) on delete set null,
-  asset_name text,
-  gross_amount_eur numeric(14,2) not null check (gross_amount_eur >= 0),
-  tax_amount_eur numeric(14,2) not null default 0 check (tax_amount_eur >= 0),
-  net_amount_eur numeric(14,2) not null check (net_amount_eur >= 0),
-  payment_date date not null default current_date,
-  created_at timestamptz not null default now(),
-  check (gross_amount_eur >= tax_amount_eur)
-);
-create index if not exists dividends_user_date_idx on public.dividends(user_id,payment_date desc);
-
--- RLS: cada usuario solo accede a sus propios registros.
-do $$ declare t text; begin
-  foreach t in array array['bank_accounts','investment_positions','investment_transactions','dividends'] loop
-    execute format('alter table public.%I enable row level security',t);
-    execute format('drop policy if exists %I on public.%I',t||'_select_own',t);
-    execute format('create policy %I on public.%I for select to authenticated using ((select auth.uid()) = user_id)',t||'_select_own',t);
-    execute format('drop policy if exists %I on public.%I',t||'_insert_own',t);
-    execute format('create policy %I on public.%I for insert to authenticated with check ((select auth.uid()) = user_id)',t||'_insert_own',t);
-    execute format('drop policy if exists %I on public.%I',t||'_update_own',t);
-    execute format('create policy %I on public.%I for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id)',t||'_update_own',t);
-    execute format('drop policy if exists %I on public.%I',t||'_delete_own',t);
-    execute format('create policy %I on public.%I for delete to authenticated using ((select auth.uid()) = user_id)',t||'_delete_own',t);
-    execute format('revoke all on public.%I from anon',t);
-    execute format('grant select, insert, update, delete on public.%I to authenticated',t);
-  end loop;
-end $$;
+alter table public.investment_transactions add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table public.investment_transactions add column if not exists position_id uuid references public.investment_positions(id) on delete set null;
+alter table public.investment_transactions add column if not exists asset_name text;
+alter table public.investment_transactions add column if not exists trade_type text not null default 'buy';
+alter table public.investment_transactions add column if not exists quantity numeric(20,8) not null default 0;
+alter table public.investment_transactions add column if not exists price_eur numeric(20,8) not null default 0;
+alter table public.investment_transactions add column if not exists fees_eur numeric(14,2) not null default 0;
+alter table public.investment_transactions add column if not exists realized_pnl_eur numeric(14,2) not null default 0;
