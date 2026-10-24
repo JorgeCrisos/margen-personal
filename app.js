@@ -258,17 +258,55 @@ async function enterApp(currentUser) {
   try { await loadTransactions(); await loadWealth(); } catch(e){console.error(e);toast("Error al cargar datos. Ejecuta el SQL actualizado y revisa las políticas RLS.");}
 }
 async function exitApp() { user=null;rows=[];if(trendChart)trendChart.destroy();if(categoryChart)categoryChart.destroy();show("app-view",false);show("auth-view",true);show("logout-btn",false);setStatus("Sin sesión"); }
-$("auth-form").addEventListener("submit",async e=>{
-  e.preventDefault();$("auth-submit").disabled=true;$("auth-message").textContent="";
-  const email=$("auth-email").value.trim(),password=$("auth-password").value;
-  try{
-    if(!supabase) throw new Error("La conexión no está lista. Comprueba config.js y recarga la página.");
-    const result=mode==="login"?await supabase.auth.signInWithPassword({email,password}):await supabase.auth.signUp({email,password});
-    if(result.error)throw result.error;
-    if(mode==="signup"&&!result.data.session){$("auth-message").style.color="#28744b";$("auth-message").textContent="Cuenta creada. Revisa tu correo para confirmar la dirección y después inicia sesión.";return;}
-    if(result.data.user&&result.data.session)await enterApp(result.data.user);
-  }catch(err){$("auth-message").style.color="#b45340";$("auth-message").textContent=err.message||"No se ha podido autenticar.";}
-  finally{$("auth-submit").disabled=false;}
+$("auth-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const button = $("auth-submit");
+  const message = $("auth-message");
+  const email = $("auth-email").value.trim();
+  const password = $("auth-password").value;
+
+  button.disabled = true;
+  button.textContent = "Conectando…";
+  message.textContent = "";
+  message.style.color = "#b45340";
+
+  try {
+    if (!supabase) {
+      throw new Error(
+        "Supabase no está conectado. Comprueba la configuración y recarga la página."
+      );
+    }
+
+    if (!email || !password) {
+      throw new Error("Introduce tu correo electrónico y contraseña.");
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data.user) {
+      throw new Error("Supabase no ha devuelto ningún usuario.");
+    }
+
+    await enterApp(data.user);
+
+  } catch (error) {
+    console.error("Error de inicio de sesión:", error);
+    message.textContent =
+      error?.message || "No se ha podido iniciar sesión.";
+  } finally {
+    button.disabled = false;
+    button.textContent = mode === "login"
+      ? "Entrar a mi espacio"
+      : "Crear cuenta";
+  }
 });
 $("logout-btn").addEventListener("click",async()=>{await supabase.auth.signOut();await exitApp();});
 $("month-filter").value=localDate().slice(0,7);
