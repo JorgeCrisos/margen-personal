@@ -36,7 +36,7 @@
         <p>Una vista sencilla de tus ingresos, tus gastos y lo que consigues guardar cada mes.</p>
         <div class="auth-points"><span>✓ Datos privados por usuario</span><span>✓ Exportación a Excel</span><span>✓ Acceso desde varios dispositivos</span></div>
       </div>
-      <form id="auth-form" class="panel auth-card">
+      <form id="auth-form" class="panel auth-card" onsubmit="event.preventDefault();">
         <div class="auth-tabs">
           <button type="button" class="auth-tab active" data-mode="login">Iniciar sesión</button>
           <button type="button" class="auth-tab" data-mode="signup">Crear cuenta</button>
