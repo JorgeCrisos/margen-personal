@@ -1,6 +1,3 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-
 const $ = (id) => document.getElementById(id);
 const categories = {
   expense: ["Vivienda","Alimentación","Transporte","Ocio","Salud","Compras","Servicios","Educación","Viajes","Suscripciones","Impuestos","Otros gastos"],
@@ -72,7 +69,7 @@ async function saveTransaction(event) {
     const result=editId ? await supabase.from("transactions").update(payload).eq("id",editId).select().single() : await supabase.from("transactions").insert(payload).select().single();
     if(result.error) throw result.error;
     closeDialog(); await loadTransactions(); toast(editId?"Movimiento actualizado":"Movimiento guardado");
-  } catch(e) { $("tx-error").textContent=`No se ha podido guardar: ${e?.message||String(e)}`; console.error(e); }
+  } catch(e) { $("tx-error").textContent="No se ha podido guardar. Comprueba la conexión y las políticas de seguridad."; console.error(e); }
   finally { $("save-tx").disabled=false; $("save-tx").textContent="Guardar movimiento"; }
 }
 $("transaction-form").addEventListener("submit",saveTransaction);
@@ -80,7 +77,7 @@ $("transaction-form").addEventListener("submit",saveTransaction);
 async function deleteTransaction(id) {
   if(!confirm("¿Quieres eliminar este movimiento? Esta acción no se puede deshacer.")) return;
   const {error}=await supabase.from("transactions").delete().eq("id",id);
-  if(error){toast(`No se ha podido eliminar el movimiento: ${error.message||String(error)}`);console.error(error);return;}
+  if(error){toast("No se ha podido eliminar el movimiento.");console.error(error);return;}
   await loadTransactions();toast("Movimiento eliminado");
 }
 function filteredRows() {
@@ -153,7 +150,7 @@ function renderWealth(){
   const db=$("dividend-list");db.replaceChildren();if(!dividends.length)db.innerHTML='<p class="muted">Todavía no hay dividendos registrados.</p>';dividends.slice(0,4).forEach(d=>{const p=positions.find(x=>x.id===d.position_id);const div=document.createElement("div");div.className="dividend-row";div.innerHTML=`<div><strong>${escapeHtml(p?.name||d.asset_name||"Dividendo")}</strong><span>${new Date(d.payment_date+"T12:00:00").toLocaleDateString("es-ES")}</span></div><strong>${eur(d.net_amount_eur)}</strong>`;db.append(div)});
   const legend=$("wealth-legend");legend.replaceChildren();const alloc=[{name:"Bancos y efectivo",value:bankTotal,color:"#398665"},{name:"Acciones",value:stock,color:"#6384c6"},{name:"ETF y fondos",value:etf,color:"#d7a64b"},{name:"Otros activos",value:positions.filter(p=>!["stock","etf","fund"].includes(p.asset_type)).reduce((s,p)=>s+positionValue(p),0),color:"#c97b65"}].filter(x=>x.value>0);
   alloc.forEach(a=>{const el=document.createElement("div");el.className="wealth-legend-item";el.innerHTML=`<span class="legend-dot" style="background:${a.color}"></span><span>${a.name}</span><strong>${pct(share(a.value,total))}</strong>`;legend.append(el)});
-  if(wealthChart)wealthChart.destroy();if(window.Chart)wealthChart=new Chart($("wealth-chart"),{type:"doughnut",data:{labels:alloc.map(a=>a.name),datasets:[{data:alloc.map(a=>a.value),backgroundColor:alloc.map(a=>a.color),borderWidth:4,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"73%",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${eur(c.raw)} (${pct(share(c.raw,total))})`}}}});
+  if(wealthChart)wealthChart.destroy();if(window.Chart)wealthChart=new Chart($("wealth-chart"),{type:"doughnut",data:{labels:alloc.map(a=>a.name),datasets:[{data:alloc.map(a=>a.value),backgroundColor:alloc.map(a=>a.color),borderWidth:4,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"73%",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${eur(c.raw)} (${pct(share(c.raw,total))})`}}}}});
   $("wealth-updated").textContent=`${banks.length} ${banks.length===1?"cuenta":"cuentas"} · ${positions.length} ${positions.length===1?"posición":"posiciones"} · Dividendos netos: ${eur(dividendsNet)}`;
   populatePositionSelects();
 }
@@ -164,21 +161,72 @@ async function loadWealth(){
 }
 function populatePositionSelects(){["trade-position","dividend-position"].forEach(id=>{const el=$(id),old=el.value;el.replaceChildren();positions.forEach(p=>el.add(new Option(`${p.name} (${p.ticker})`,p.id)));if(positions.some(p=>p.id===old))el.value=old;});$("add-trade").disabled=positions.length===0;$("add-dividend").disabled=positions.length===0;}
 function editBank(id){const b=banks.find(x=>x.id===id);if(!b)return;const name=prompt("Nombre de la cuenta:",b.name);if(name===null)return;const bal=prompt("Saldo actual en euros:",b.balance_eur);if(bal===null)return;const kind=prompt("Tipo de cuenta (Cuenta corriente, Ahorro, Efectivo, Depósito, Otro):",b.account_type);if(kind===null)return;saveBank({id,name:name.trim(),balance_eur:Number(bal),account_type:kind.trim()||"Otro"});}
-async function saveBank(payload){if(!payload.name||!Number.isFinite(payload.balance_eur)){$("bank-error").textContent="Revisa el nombre y el saldo.";return false}if(!supabase||!user){$("bank-error").textContent="Tu sesión ha caducado. Cierra sesión y vuelve a entrar.";return false}const {id,...fields}=payload;try{const {error}=await (id?supabase.from("bank_accounts").update({...fields,updated_at:new Date().toISOString()}).eq("id",id):supabase.from("bank_accounts").insert({...fields,user_id:user.id}));if(error)throw error;await loadWealth();toast("Cuenta bancaria guardada");return true}catch(error){$("bank-error").textContent=`No se ha podido guardar la cuenta: ${error?.message||String(error)}`;console.error("saveBank:",error);return false}}
-async function deleteBank(id){if(!confirm("¿Eliminar esta cuenta bancaria?"))return;const {error}=await supabase.from("bank_accounts").delete().eq("id",id);if(error){toast(`No se ha podido eliminar la cuenta: ${error.message||String(error)}`);console.error(error);return}await loadWealth()}
+async function saveBank(payload){
+  if(!user||!supabase){$("bank-error").textContent="No hay una sesión activa. Inicia sesión y vuelve a intentarlo.";return false;}
+  if(!payload.name||!Number.isFinite(payload.balance_eur)){$("bank-error").textContent="Revisa el nombre y el saldo.";return false;}
+  const {id,...fields}=payload;
+  try {
+    const {error}=await (id
+      ?supabase.from("bank_accounts").update({...fields,updated_at:new Date().toISOString()}).eq("id",id)
+      :supabase.from("bank_accounts").insert({...fields,user_id:user.id}));
+    if(error)throw error;
+    await loadWealth();
+    toast("Cuenta bancaria guardada");
+    return true;
+  } catch(error) {
+    console.error("Error guardando cuenta bancaria:",error);
+    $("bank-error").textContent=error?.message
+      ?`No se ha podido guardar: ${error.message}`
+      :"No se ha podido guardar la cuenta. Comprueba la conexión y los permisos de Supabase.";
+    return false;
+  }
+}
+async function deleteBank(id){if(!confirm("¿Eliminar esta cuenta bancaria?"))return;const {error}=await supabase.from("bank_accounts").delete().eq("id",id);if(error){toast("No se ha podido eliminar la cuenta");return}await loadWealth()}
 function openBank(){["bank-name","bank-balance"].forEach(id=>$(id).value="");$("bank-kind").value="Cuenta corriente";$("bank-error").textContent="";$("bank-dialog").showModal()}
 $("add-bank").addEventListener("click",openBank);
-$("bank-form").addEventListener("submit",async e=>{e.preventDefault();const btn=$("bank-form").querySelector('button[type="submit"]');btn.disabled=true;btn.textContent="Guardando…";try{const ok=await saveBank({name:$("bank-name").value.trim(),account_type:$("bank-kind").value,balance_eur:Number($("bank-balance").value)});if(ok)$("bank-dialog").close()}catch(error){$("bank-error").textContent=error?.message||String(error)}finally{btn.disabled=false;btn.textContent="Guardar cuenta"}});
+$("bank-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const form=e.currentTarget, submit=form.querySelector('button[type="submit"]');
+  const originalText=submit.textContent;
+  submit.disabled=true;submit.textContent="Guardando…";$("bank-error").textContent="";
+  try {
+    const saved=await saveBank({name:$("bank-name").value.trim(),account_type:$("bank-kind").value,balance_eur:Number($("bank-balance").value)});
+    if(saved){form.reset();$("bank-dialog").close();}
+  } catch(error) {
+    console.error("Error al guardar cuenta:",error);
+    $("bank-error").textContent="Ha ocurrido un error inesperado. No se ha cerrado el formulario.";
+  } finally {
+    submit.disabled=false;submit.textContent=originalText;
+  }
+});
 function editPosition(id){const p=positions.find(x=>x.id===id);if(!p)return;const name=prompt("Nombre del activo:",p.name);if(name===null)return;const ticker=prompt("Ticker:",p.ticker);if(ticker===null)return;const qty=prompt("Títulos actuales:",p.quantity);if(qty===null)return;const cost=prompt("Coste medio por título en EUR:",p.average_cost_eur);if(cost===null)return;const type=prompt("Tipo (stock, etf, fund, crypto, other):",p.asset_type);if(type===null)return;savePosition({id,name:name.trim(),ticker:ticker.trim().toUpperCase(),quantity:Number(qty),average_cost_eur:Number(cost),asset_type:assetTypes[type]?type:"other"})}
-async function savePosition(payload){if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, títulos y coste medio.";return false}if(!supabase||!user){$("asset-error").textContent="Tu sesión ha caducado. Cierra sesión y vuelve a entrar.";return false}const {id,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};try{const {error}=await (id?supabase.from("investment_positions").update(body).eq("id",id):supabase.from("investment_positions").insert({...body,user_id:user.id,current_price_eur:null}));if(error)throw error;await loadWealth();toast("Activo guardado");return true}catch(error){const msg=error?.message||String(error);$("asset-error").textContent=`No se ha podido guardar el activo: ${msg}`;console.error("savePosition:",error);return false}}
-async function deletePosition(id){if(!confirm("Eliminar este activo también puede afectar a la vista de su historial. ¿Continuar?"))return;const {error}=await supabase.from("investment_positions").delete().eq("id",id);if(error){toast(`No se ha podido eliminar el activo: ${error.message||String(error)}`);console.error(error);return}await loadWealth()}
+async function savePosition(payload){
+  if(!supabase||!user){$("asset-error").textContent="Tu sesión no está activa. Vuelve a iniciar sesión.";return false;}
+  if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<=0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, cantidad y coste medio.";return false;}
+  const {id,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};
+  try {
+    const {error}=await (id?supabase.from("investment_positions").update(body).eq("id",id):supabase.from("investment_positions").insert({...body,user_id:user.id,current_price_eur:null}));
+    if(error) throw error;
+    await loadWealth();toast("Activo guardado");return true;
+  } catch(error) {
+    console.error("Error guardando activo:",error);
+    $("asset-error").textContent=`No se ha podido guardar el activo: ${error?.message||"error desconocido"}`;
+    return false;
+  }
+}
+async function deletePosition(id){if(!confirm("Eliminar este activo también puede afectar a la vista de su historial. ¿Continuar?"))return;const {error}=await supabase.from("investment_positions").delete().eq("id",id);if(error){toast("No se ha podido eliminar el activo");return}await loadWealth()}
 $("add-position").addEventListener("click",()=>{$("position-form").reset();$("asset-error").textContent="";$("position-dialog").showModal()});
-$("position-form").addEventListener("submit",async e=>{e.preventDefault();const btn=$("position-form").querySelector('button[type="submit"]');btn.disabled=true;btn.textContent="Guardando…";try{const ok=await savePosition({name:$("asset-name").value.trim(),ticker:$("asset-ticker").value.trim().toUpperCase(),asset_type:$("asset-type").value,quantity:Number($("asset-quantity").value),average_cost_eur:Number($("asset-cost").value)});if(ok)$("position-dialog").close()}catch(error){$("asset-error").textContent=error?.message||String(error)}finally{btn.disabled=false;btn.textContent="Guardar activo"}});
+$("position-form").addEventListener("submit",async e=>{
+  e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]'),oldText=submit.textContent;submit.disabled=true;submit.textContent="Guardando…";$("asset-error").textContent="";
+  try {const saved=await savePosition({name:$("asset-name").value.trim(),ticker:$("asset-ticker").value.trim().toUpperCase(),asset_type:$("asset-type").value,quantity:Number($("asset-quantity").value),average_cost_eur:Number($("asset-cost").value)});if(saved){form.reset();$("position-dialog").close();}}
+  catch(error){console.error(error);$("asset-error").textContent=`Error inesperado: ${error?.message||error}`;}
+  finally{submit.disabled=false;submit.textContent=oldText;}
+});
 $("add-trade").addEventListener("click",()=>{if(!positions.length)return;$("trade-form").reset();$("trade-date").value=localDate();$("trade-fees").value="0";$("trade-error").textContent="";populatePositionSelects();$("trade-dialog").showModal()});
-$("trade-form").addEventListener("submit",async e=>{e.preventDefault();const p=positions.find(x=>x.id===$("trade-position").value),type=$("trade-type").value,qty=Number($("trade-quantity").value),price=Number($("trade-price").value),fees=Number($("trade-fees").value),date=$("trade-date").value;if(!p||qty<=0||price<=0||fees<0||!date){$("trade-error").textContent="Revisa los datos de la operación.";return}const oldQty=Number(p.quantity),oldCost=Number(p.average_cost_eur),newQty=type==="buy"?oldQty+qty:oldQty-qty;if(type==="sell"&&qty>oldQty){$("trade-error").textContent="No puedes vender más títulos de los que tienes.";return}const realized=type==="sell"?(price-oldCost)*qty-fees:0;const nextAvg=type==="buy"?(oldQty*oldCost+qty*price+fees)/(oldQty+qty):oldCost;const {error:tradeError}=await supabase.from("investment_transactions").insert({user_id:user.id,position_id:p.id,trade_type:type,quantity:qty,price_eur:price,fees_eur:fees,trade_date:date,realized_pnl_eur:realized});if(tradeError){$("trade-error").textContent=`No se ha podido guardar la operación: ${tradeError.message||String(tradeError)}`;console.error(tradeError);return}const {error:posError}=await supabase.from("investment_positions").update({quantity:newQty,average_cost_eur:newQty===0?0:nextAvg,updated_at:new Date().toISOString()}).eq("id",p.id);if(posError){toast("La operación se guardó, pero no se actualizó la posición. Revisa el estado de la cartera.");console.error(posError);return}$("trade-dialog").close();await loadWealth();toast(type==="buy"?"Compra registrada":"Venta registrada")});
+$("trade-form").addEventListener("submit",async e=>{e.preventDefault();const p=positions.find(x=>x.id===$("trade-position").value),type=$("trade-type").value,qty=Number($("trade-quantity").value),price=Number($("trade-price").value),fees=Number($("trade-fees").value),date=$("trade-date").value;if(!p||qty<=0||price<=0||fees<0||!date){$("trade-error").textContent="Revisa los datos de la operación.";return}const oldQty=Number(p.quantity),oldCost=Number(p.average_cost_eur),newQty=type==="buy"?oldQty+qty:oldQty-qty;if(type==="sell"&&qty>oldQty){$("trade-error").textContent="No puedes vender más títulos de los que tienes.";return}const realized=type==="sell"?(price-oldCost)*qty-fees:0;const nextAvg=type==="buy"?(oldQty*oldCost+qty*price+fees)/(oldQty+qty):oldCost;const {error:tradeError}=await supabase.from("investment_transactions").insert({user_id:user.id,position_id:p.id,trade_type:type,quantity:qty,price_eur:price,fees_eur:fees,trade_date:date,realized_pnl_eur:realized});if(tradeError){$("trade-error").textContent="No se ha podido guardar la operación. Comprueba el SQL.";console.error(tradeError);return}const {error:posError}=await supabase.from("investment_positions").update({quantity:newQty,average_cost_eur:newQty===0?0:nextAvg,updated_at:new Date().toISOString()}).eq("id",p.id);if(posError){toast("La operación se guardó, pero no se actualizó la posición. Revisa el estado de la cartera.");console.error(posError);return}$("trade-dialog").close();await loadWealth();toast(type==="buy"?"Compra registrada":"Venta registrada")});
 $("add-dividend").addEventListener("click",()=>{if(!positions.length)return;$("dividend-form").reset();$("dividend-date").value=localDate();$("dividend-tax").value="0";$("dividend-net").value="0";$("dividend-error").textContent="";populatePositionSelects();$("dividend-dialog").showModal()});
 $("dividend-gross").addEventListener("input",()=>{$("dividend-net").value=Math.max(0,Number($("dividend-gross").value||0)-Number($("dividend-tax").value||0)).toFixed(2)});$("dividend-tax").addEventListener("input",()=>{$("dividend-net").value=Math.max(0,Number($("dividend-gross").value||0)-Number($("dividend-tax").value||0)).toFixed(2)});
-$("dividend-form").addEventListener("submit",async e=>{e.preventDefault();const p=positions.find(x=>x.id===$("dividend-position").value),gross=Number($("dividend-gross").value),tax=Number($("dividend-tax").value),net=Number($("dividend-net").value);if(!p||gross<0||tax<0||net<0||Math.abs(gross-tax-net)>0.02){$("dividend-error").textContent="Comprueba que bruto − retención = neto.";return}const {error}=await supabase.from("dividends").insert({user_id:user.id,position_id:p.id,gross_amount_eur:gross,tax_amount_eur:tax,net_amount_eur:net,payment_date:$("dividend-date").value});if(error){$("dividend-error").textContent=`No se ha podido guardar el dividendo: ${error.message||String(error)}`;console.error(error);return}$("dividend-dialog").close();await loadWealth();toast("Dividendo registrado")});
+$("dividend-form").addEventListener("submit",async e=>{e.preventDefault();const p=positions.find(x=>x.id===$("dividend-position").value),gross=Number($("dividend-gross").value),tax=Number($("dividend-tax").value),net=Number($("dividend-net").value);if(!p||gross<0||tax<0||net<0||Math.abs(gross-tax-net)>0.02){$("dividend-error").textContent="Comprueba que bruto − retención = neto.";return}const {error}=await supabase.from("dividends").insert({user_id:user.id,position_id:p.id,gross_amount_eur:gross,tax_amount_eur:tax,net_amount_eur:net,payment_date:$("dividend-date").value});if(error){$("dividend-error").textContent="No se ha podido guardar el dividendo. Comprueba el SQL.";console.error(error);return}$("dividend-dialog").close();await loadWealth();toast("Dividendo registrado")});
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>$(b.dataset.close).close()));
 async function refreshQuotes(){if(!positions.length){toast("Añade activos a la cartera primero");return}$("refresh-quotes").disabled=true;$("quote-status").textContent="Actualizando cotizaciones…";try{const {data,error}=await supabase.functions.invoke("get-quotes",{body:{symbols:[...new Set(positions.map(p=>p.ticker.toUpperCase()))]}});if(error)throw error;if(!data?.quotes)throw new Error(data?.error||"La función de cotizaciones no devolvió datos");let updated=0;for(const q of data.quotes){if(!Number.isFinite(Number(q.price_eur)))continue;const p=positions.find(x=>x.ticker.toUpperCase()===q.symbol.toUpperCase());if(!p)continue;const {error:upErr}=await supabase.from("investment_positions").update({current_price_eur:Number(q.price_eur),quote_currency:q.currency||"EUR",quote_updated_at:new Date().toISOString()}).eq("id",p.id);if(!upErr)updated++}await loadWealth();$("quote-status").textContent=`Cotizaciones actualizadas: ${updated}/${positions.length} posiciones · ${new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}`;toast("Cotizaciones actualizadas")}catch(e){console.error(e);$("quote-status").textContent="No se pudieron actualizar las cotizaciones. Configura la función de mercado y su API key.";toast("No se pudieron actualizar cotizaciones")}finally{$("refresh-quotes").disabled=false}}
 $("refresh-quotes").addEventListener("click",refreshQuotes);
@@ -201,7 +249,7 @@ function exportExcel() {
 $("export-btn").addEventListener("click",exportExcel);
 ["month-filter","search-filter","type-filter","category-filter"].forEach(id=>$(id).addEventListener(id==="month-filter"?"change":"input",render));
 $("all-periods").addEventListener("click",()=>{$("month-filter").value="";render();});
-
+$("add-shortcut").addEventListener("click",()=>{ $("transactions-section").scrollIntoView({behavior:"smooth",block:"start"}); });
 
 async function enterApp(currentUser) {
   user=currentUser; show("auth-view",false);show("app-view",true);show("logout-btn",true);setStatus("Conectado",true);
@@ -214,6 +262,7 @@ $("auth-form").addEventListener("submit",async e=>{
   e.preventDefault();$("auth-submit").disabled=true;$("auth-message").textContent="";
   const email=$("auth-email").value.trim(),password=$("auth-password").value;
   try{
+    if(!supabase) throw new Error("La conexión no está lista. Comprueba config.js y recarga la página.");
     const result=mode==="login"?await supabase.auth.signInWithPassword({email,password}):await supabase.auth.signUp({email,password});
     if(result.error)throw result.error;
     if(mode==="signup"&&!result.data.session){$("auth-message").style.color="#28744b";$("auth-message").textContent="Cuenta creada. Revisa tu correo para confirmar la dirección y después inicia sesión.";return;}
@@ -224,14 +273,30 @@ $("auth-form").addEventListener("submit",async e=>{
 $("logout-btn").addEventListener("click",async()=>{await supabase.auth.signOut();await exitApp();});
 $("month-filter").value=localDate().slice(0,7);
 populateCategories("expense","tx-category");
-if(!SUPABASE_URL||!SUPABASE_ANON_KEY||SUPABASE_URL.includes("TU-PROYECTO")||SUPABASE_ANON_KEY.includes("TU_CLAVE")){
-  show("setup-notice",true);setStatus("Falta configuración");
-}else{
-  try{
+async function bootstrap(){
+  show("auth-view",true);
+  setStatus("Iniciando…");
+  try {
+    const config = await import("./config.js");
+    const SUPABASE_URL = config.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = config.SUPABASE_ANON_KEY;
+    if(!SUPABASE_URL||!SUPABASE_ANON_KEY||String(SUPABASE_URL).includes("TU-PROYECTO")||String(SUPABASE_ANON_KEY).includes("TU_CLAVE")){
+      show("setup-notice",true);setStatus("Falta configuración");
+      $("auth-message").textContent="Falta configurar Supabase en config.js. La pantalla de acceso está disponible, pero no se puede iniciar sesión hasta corregirlo.";
+      return;
+    }
+    const {createClient}=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
     supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     setStatus("Conectando…");
     supabase.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT")exitApp();});
-    const {data:{session},error}=await supabase.auth.getSession();if(error)throw error;
-    if(session)await enterApp(session.user);else{show("auth-view",true);setStatus("Sin sesión");}
-  }catch(e){console.error(e);show("auth-view",true);$("auth-message").textContent="No se ha podido conectar. Revisa la configuración de Supabase.";}
+    const {data:{session},error}=await supabase.auth.getSession();
+    if(error)throw error;
+    if(session) await enterApp(session.user);
+    else {show("auth-view",true);setStatus("Sin sesión");}
+  } catch(e) {
+    console.error("Error iniciando Margen Personal:",e);
+    show("auth-view",true);setStatus("Error de conexión");
+    $("auth-message").textContent=`No se ha podido iniciar la conexión: ${e?.message||"comprueba config.js y tu conexión a Internet"}`;
+  }
 }
+bootstrap();
