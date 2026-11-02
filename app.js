@@ -5,6 +5,7 @@ const categories = {
 };
 const palette = ["#3d8058","#d7a64b","#6b8eae","#c97b65","#9c88bd","#75aaa1","#d18dba","#9da67a","#b6a18d","#8b9ca9"];
 const currency = new Intl.NumberFormat("es-ES", {style:"currency",currency:"EUR"});
+const BANK_BALANCE_CUTOFF = "2026-11-01";
 let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, toastTimer = null;
 
 function setStatus(text, connected=false) { $("connection-state").textContent = text; $("connection-state").classList.toggle("connected", connected); if (!connected) $("connection-state").innerHTML = "<i></i>" + text; else $("connection-state").innerHTML = "<i></i>" + text; }
@@ -37,8 +38,11 @@ function openDialog(row=null) {
   $("tx-notes").value=row?.notes||"";
   setTxType(row?.type||"expense");
   if(row?.category) $("tx-category").value=row.category;
+  populateBankSelect(row?.bank_account_id || "");
+  $("tx-bank").required=($("tx-date").value>=BANK_BALANCE_CUTOFF);
   $("tx-error").textContent="";
-  $("save-tx").disabled=false;
+  $("save-tx").disabled=banks.length===0;
+  if(!banks.length) $("tx-error").textContent="Primero añade tus cuentas bancarias en la sección Bancos.";
   $("transaction-dialog").showModal();
   $("tx-amount").focus();
 }
@@ -51,7 +55,7 @@ $("cancel-dialog").addEventListener("click",closeDialog);
 document.querySelectorAll(".type-option").forEach(b=>b.addEventListener("click",()=>setTxType(b.dataset.type)));
 
 async function loadTransactions() {
-  const {data,error}=await supabase.from("transactions").select("id,type,amount,description,category,transaction_date,notes,created_at").order("transaction_date",{ascending:false}).order("created_at",{ascending:false});
+  const {data,error}=await supabase.from("transactions").select("id,type,amount,description,category,transaction_date,notes,created_at,bank_account_id").order("transaction_date",{ascending:false}).order("created_at",{ascending:false});
   if(error) throw error;
   rows=data||[];
   render();
@@ -62,8 +66,11 @@ async function saveTransaction(event) {
   const amount=Number($("tx-amount").value);
   const description=$("tx-description").value.trim();
   const date=$("tx-date").value;
+  const bankId=$("tx-bank").value;
   if(!Number.isFinite(amount)||amount<=0||!description||!date){$("tx-error").textContent="Revisa el importe, la descripción y la fecha.";return;}
-  const payload={user_id:user.id,type:txType,amount,description,category:$("tx-category").value,transaction_date:date,notes:$("tx-notes").value.trim()||null};
+  if(date>=BANK_BALANCE_CUTOFF&&!bankId){$("tx-error").textContent="Selecciona la cuenta bancaria del movimiento.";return;}
+  if(date<BANK_BALANCE_CUTOFF&&!editId){$("tx-error").textContent="Los nuevos movimientos deben registrarse desde el 1/11/2026.";return;}
+  const payload={user_id:user.id,bank_account_id:bankId||null,type:txType,amount,description,category:$("tx-category").value,transaction_date:date,notes:$("tx-notes").value.trim()||null};
   $("save-tx").disabled=true; $("save-tx").textContent="Guardando…"; $("tx-error").textContent="";
   try {
     const result=editId ? await supabase.from("transactions").update(payload).eq("id",editId).select().single() : await supabase.from("transactions").insert(payload).select().single();
@@ -72,6 +79,7 @@ async function saveTransaction(event) {
   } catch(e) { $("tx-error").textContent="No se ha podido guardar. Comprueba la conexión y las políticas de seguridad."; console.error(e); }
   finally { $("save-tx").disabled=false; $("save-tx").textContent="Guardar movimiento"; }
 }
+$("tx-date").addEventListener("change",()=>{$("tx-bank").required=$("tx-date").value>=BANK_BALANCE_CUTOFF;});
 $("transaction-form").addEventListener("submit",saveTransaction);
 
 async function deleteTransaction(id) {
@@ -102,8 +110,8 @@ function renderTransactions(list) {
   show("empty-state",list.length===0); $("transactions-section").classList.toggle("has-empty",list.length===0);
   if(!list.length){$("transactions-body").innerHTML="";return;}
   list.forEach(r=>{
-    const tr=document.createElement("tr"), isIncome=r.type==="income";
-    tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">${isIncome?"↗":"↘"}</span><div><div class="movement-title">${escapeHtml(r.description)}</div><div class="movement-subtitle">${r.notes?escapeHtml(r.notes):isIncome?"Ingreso":"Gasto"}</div></div></div></td><td>${new Date(r.transaction_date+"T12:00:00").toLocaleDateString("es-ES")}</td><td><span class="category-pill">${escapeHtml(r.category)}</span></td><td class="align-right amount ${isIncome?"income":"expense"}">${isIncome?"+":"−"}${fmt(r.amount)}</td><td class="align-right"><button class="row-action" data-edit="${escapeHtml(r.id)}" aria-label="Editar movimiento" title="Editar">✎</button><button class="row-action" data-delete="${escapeHtml(r.id)}" aria-label="Eliminar movimiento" title="Eliminar">×</button></td>`;
+    const tr=document.createElement("tr"), isIncome=r.type==="income", bank=banks.find(b=>b.id===r.bank_account_id);
+    tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">${isIncome?"↗":"↘"}</span><div><div class="movement-title">${escapeHtml(r.description)}</div><div class="movement-subtitle">${escapeHtml(bank?.name||"Cuenta no asignada")}${r.notes?` · ${escapeHtml(r.notes)}`:""}</div></div></div></td><td>${new Date(r.transaction_date+"T12:00:00").toLocaleDateString("es-ES")}</td><td><span class="category-pill">${escapeHtml(r.category)}</span></td><td class="align-right amount ${isIncome?"income":"expense"}">${isIncome?"+":"−"}${fmt(r.amount)}</td><td class="align-right"><button class="row-action" data-edit="${escapeHtml(r.id)}" aria-label="Editar movimiento" title="Editar">✎</button><button class="row-action" data-delete="${escapeHtml(r.id)}" aria-label="Eliminar movimiento" title="Eliminar">×</button></td>`;
     tbody.append(tr);
   });
   tbody.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>{const row=rows.find(r=>r.id===b.dataset.edit);if(row)openDialog(row);}));
@@ -129,7 +137,9 @@ const assetTypes = {stock:"Acción",etf:"ETF",fund:"Fondo",crypto:"Criptoactivo"
 const tradeTypes = {buy:"Compra",sell:"Venta"};
 const pct = n => `${(Number(n)||0).toLocaleString("es-ES",{maximumFractionDigits:1,minimumFractionDigits:1})}%`;
 const eur = n => currency.format(Number(n)||0);
-function totalBanks(){return banks.reduce((s,b)=>s+Number(b.balance_eur||0),0)}
+function bankMovementDelta(bankId){return rows.filter(r=>r.bank_account_id===bankId && r.transaction_date>=BANK_BALANCE_CUTOFF).reduce((sum,r)=>sum+(r.type==="income"?1:-1)*Number(r.amount||0),0)}
+function currentBankBalance(bank){return Number(bank.balance_eur||0)+bankMovementDelta(bank.id)}
+function totalBanks(){return banks.reduce((s,b)=>s+currentBankBalance(b),0)}
 function positionValue(p){return Number(p.quantity||0)*Number(p.current_price_eur ?? p.average_cost_eur ?? 0)}
 function totalInvestments(){return positions.reduce((s,p)=>s+positionValue(p),0)}
 function portfolioCost(){return positions.reduce((s,p)=>s+Number(p.quantity||0)*Number(p.average_cost_eur||0),0)}
@@ -142,7 +152,7 @@ function renderWealth(){
   const total=wealthTotal(), bankTotal=totalBanks(), stock=positions.filter(p=>p.asset_type==="stock").reduce((s,p)=>s+positionValue(p),0), etf=positions.filter(p=>["etf","fund"].includes(p.asset_type)).reduce((s,p)=>s+positionValue(p),0), pnl=portfolioPnl(), dividendsNet=dividends.reduce((s,d)=>s+Number(d.net_amount_eur||0),0);
   $("wealth-total").textContent=eur(total);$("wealth-bank-total").textContent=eur(bankTotal);$("wealth-stock-total").textContent=eur(stock);$("wealth-etf-total").textContent=eur(etf);const realized=realizedPnl();const totalPnl=pnl+realized;$("wealth-return").textContent=`${totalPnl>=0?"+":"−"}${eur(Math.abs(totalPnl))}`;$("wealth-return").style.color=totalPnl<0?"#bd654e":"#286b53";$("wealth-return-detail").textContent=`Latente ${eur(pnl)} · Realizada ${eur(realized)}`;
   setShare("wealth-bank-share","bank-share-bar",bankTotal,total);setShare("wealth-stock-share","stock-share-bar",stock,total);setShare("wealth-etf-share","etf-share-bar",etf,total);$("dividend-total").textContent=eur(dividendsNet);
-  const tbody=$("banks-body");tbody.replaceChildren();show("banks-empty",banks.length===0);banks.forEach(b=>{const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">▤</span><div><div class="movement-title">${escapeHtml(b.name)}</div><div class="movement-subtitle">Actualizado ${new Date(b.updated_at||b.created_at||Date.now()).toLocaleDateString("es-ES")}</div></div></div></td><td><span class="category-pill">${escapeHtml(b.account_type)}</span></td><td class="align-right amount">${eur(b.balance_eur)}</td><td class="align-right">${pct(share(Number(b.balance_eur),total))}</td><td class="align-right"><button class="row-action" data-bank-edit="${b.id}" title="Editar saldo">✎</button><button class="row-action" data-bank-delete="${b.id}" title="Eliminar cuenta">×</button></td>`;tbody.append(tr)});
+  const tbody=$("banks-body");tbody.replaceChildren();show("banks-empty",banks.length===0);banks.forEach(b=>{const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">▤</span><div><div class="movement-title">${escapeHtml(b.name)}</div><div class="movement-subtitle">Saldo inicial 01/11/2026 · ${eur(b.balance_eur)}</div></div></div></td><td><span class="category-pill">${escapeHtml(b.account_type)}</span></td><td class="align-right amount">${eur(currentBankBalance(b))}</td><td class="align-right">${pct(share(currentBankBalance(b),total))}</td><td class="align-right"><button class="row-action" data-bank-edit="${b.id}" title="Editar saldo">✎</button><button class="row-action" data-bank-delete="${b.id}" title="Eliminar cuenta">×</button></td>`;tbody.append(tr)});
   tbody.querySelectorAll("[data-bank-edit]").forEach(btn=>btn.addEventListener("click",()=>editBank(btn.dataset.bankEdit)));tbody.querySelectorAll("[data-bank-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteBank(btn.dataset.bankDelete)));
   const itbody=$("investments-body");itbody.replaceChildren();show("investments-empty",positions.length===0);positions.forEach(p=>{const value=positionValue(p),cost=Number(p.quantity||0)*Number(p.average_cost_eur||0),gain=value-cost,ret=cost>0?gain/cost*100:0;const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">${p.asset_type==="etf"?"◫":"↗"}</span><div><div class="movement-title">${escapeHtml(p.name)}</div><div class="movement-subtitle">${escapeHtml(p.ticker.toUpperCase())}</div></div></div></td><td><span class="category-pill">${assetTypes[p.asset_type]||"Otro"}</span></td><td>${Number(p.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${p.current_price_eur==null?"—":eur(p.current_price_eur)}</td><td class="align-right amount">${eur(value)}</td><td class="align-right"><span class="amount ${gain>=0?"income":"expense"}">${gain>=0?"+":"−"}${eur(Math.abs(gain))} (${pct(ret)})</span></td><td class="align-right"><button class="row-action" data-position-edit="${p.id}" title="Editar">✎</button><button class="row-action" data-position-delete="${p.id}" title="Eliminar">×</button></td>`;itbody.append(tr)});
   itbody.querySelectorAll("[data-position-edit]").forEach(btn=>btn.addEventListener("click",()=>editPosition(btn.dataset.positionEdit)));itbody.querySelectorAll("[data-position-delete]").forEach(btn=>btn.addEventListener("click",()=>deletePosition(btn.dataset.positionDelete)));
@@ -157,13 +167,14 @@ function renderWealth(){
 async function loadWealth(){
   const requests=await Promise.all([supabase.from("bank_accounts").select("*").order("name"),supabase.from("investment_positions").select("*").order("name"),supabase.from("investment_transactions").select("*").order("trade_date",{ascending:false}),supabase.from("dividends").select("*").order("payment_date",{ascending:false})]);
   const names=["bancos","cartera","operaciones","dividendos"];requests.forEach((r,i)=>{if(r.error)throw new Error(`Error al cargar ${names[i]}: ${r.error.message}`)});
-  [banks,positions,trades,dividends]=requests.map(r=>r.data||[]);renderWealth();
+  [banks,positions,trades,dividends]=requests.map(r=>r.data||[]);renderWealth();populateBankSelect($("tx-bank")?.value||"");render();
 }
+function populateBankSelect(selected=""){const el=$("tx-bank");if(!el)return;el.replaceChildren(new Option("Selecciona un banco…",""));banks.forEach(b=>el.add(new Option(`${b.name} · ${eur(currentBankBalance(b))}`,b.id)));if(banks.some(b=>b.id===selected))el.value=selected;else if(banks.length===1)el.value=banks[0].id;$("save-tx").disabled=banks.length===0;}
 function populatePositionSelects(){["trade-position","dividend-position"].forEach(id=>{const el=$(id),old=el.value;el.replaceChildren();positions.forEach(p=>el.add(new Option(`${p.name} (${p.ticker})`,p.id)));if(positions.some(p=>p.id===old))el.value=old;});$("add-trade").disabled=positions.length===0;$("add-dividend").disabled=positions.length===0;}
-function editBank(id){const b=banks.find(x=>x.id===id);if(!b)return;const name=prompt("Nombre de la cuenta:",b.name);if(name===null)return;const bal=prompt("Saldo actual en euros:",b.balance_eur);if(bal===null)return;const kind=prompt("Tipo de cuenta (Cuenta corriente, Ahorro, Efectivo, Depósito, Otro):",b.account_type);if(kind===null)return;saveBank({id,name:name.trim(),balance_eur:Number(bal),account_type:kind.trim()||"Otro"});}
+function editBank(id){const b=banks.find(x=>x.id===id);if(!b)return;const name=prompt("Nombre de la cuenta:",b.name);if(name===null)return;const bal=prompt("Saldo inicial a 01/11/2026 en euros (no el saldo actual):",b.balance_eur);if(bal===null)return;const kind=prompt("Tipo de cuenta (Cuenta corriente, Ahorro, Efectivo, Depósito, Otro):",b.account_type);if(kind===null)return;saveBank({id,name:name.trim(),balance_eur:Number(bal),account_type:kind.trim()||"Otro"});}
 async function saveBank(payload){
   if(!user||!supabase){$("bank-error").textContent="No hay una sesión activa. Inicia sesión y vuelve a intentarlo.";return false;}
-  if(!payload.name||!Number.isFinite(payload.balance_eur)){$("bank-error").textContent="Revisa el nombre y el saldo.";return false;}
+  if(!payload.name||!Number.isFinite(payload.balance_eur)){$("bank-error").textContent="Revisa el nombre y el saldo inicial.";return false;}
   const {id,...fields}=payload;
   try {
     const {error}=await (id
@@ -233,7 +244,7 @@ $("refresh-quotes").addEventListener("click",refreshQuotes);
 
 function exportExcel() {
   if(!window.XLSX){toast("No se ha podido cargar el módulo de Excel.");return;}
-  const data=rows.map(r=>({Fecha:r.transaction_date,Tipo:r.type==="income"?"Ingreso":"Gasto",Descripción:r.description,Categoría:r.category,Importe:Number(r.amount),Notas:r.notes||""}));
+  const data=rows.map(r=>({Fecha:r.transaction_date,Tipo:r.type==="income"?"Ingreso":"Gasto",Banco:banks.find(b=>b.id===r.bank_account_id)?.name||"Sin asignar",Descripción:r.description,Categoría:r.category,Importe:Number(r.amount),Notas:r.notes||""}));
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(data);
   ws["!cols"]=[{wch:14},{wch:12},{wch:32},{wch:20},{wch:15},{wch:40}];
   XLSX.utils.book_append_sheet(wb,ws,"Movimientos");
