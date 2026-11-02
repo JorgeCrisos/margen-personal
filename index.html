@@ -73,7 +73,7 @@
           <a class="side-link" href="#banks-section"><span class="nav-icon">▤</span> Bancos</a>
           <a class="side-link" href="#investments-section"><span class="nav-icon">↗</span> Inversiones</a>
           <a class="side-link" href="#transactions-section"><span class="nav-icon">⇄</span> Gastos e ingresos</a>
-          <a class="side-link" href="#trend-chart"><span class="nav-icon">▥</span> Estadísticas</a>
+          <a class="side-link" href="#forecast-section"><span class="nav-icon">▥</span> Estadísticas</a>
           <a class="side-link" href="#category-chart"><span class="nav-icon">◷</span> Categorías</a>
         </nav>
         <div class="sidebar-bottom">
@@ -118,6 +118,22 @@
           <article class="metric-card"><div class="metric-head"><span>Movimientos</span><span class="metric-icon count-icon">≡</span></div><div id="metric-count" class="metric-value">—</div><div class="metric-foot"><span class="foot-dot blue-dot"></span> Operaciones registradas</div></article>
         </section>
 
+        <section id="forecast-section" class="panel forecast-panel">
+          <div class="panel-heading"><div><span class="eyebrow">PLANIFICACIÓN</span><h2>Tu ahorro y previsión mensual</h2><p class="muted">Estimación basada en los movimientos registrados este mes</p></div><span class="chart-tag">Mes en curso</span></div>
+          <div class="forecast-grid">
+            <article><span>Ingresos registrados</span><strong id="forecast-income">—</strong></article>
+            <article><span>Gastos registrados</span><strong id="forecast-expense">—</strong></article>
+            <article><span>Ahorro actual</span><strong id="forecast-saving">—</strong></article>
+            <article class="forecast-highlight"><span>Ahorro estimado al cierre</span><strong id="forecast-projected">—</strong><small id="forecast-confidence">Pendiente de datos</small></article>
+          </div>
+          <div class="forecast-bottom"><div><span class="muted">Tasa de ahorro actual</span><strong id="forecast-rate">—</strong></div><div><span class="muted">Gasto diario medio</span><strong id="forecast-daily">—</strong></div><div><span class="muted">Días restantes</span><strong id="forecast-days">—</strong></div></div>
+          <p class="forecast-note" id="forecast-note">La previsión es orientativa y mejora conforme registras movimientos.</p>
+        </section>
+        <section id="history-section" class="panel history-panel">
+          <div class="panel-heading"><div><span class="eyebrow">EVOLUCIÓN</span><h2>Histórico de patrimonio</h2><p class="muted">Fotografías diarias guardadas desde que activas el histórico</p></div><span class="chart-tag">Últimos 12 meses</span></div>
+          <div class="chart-wrap"><canvas id="wealth-history-chart" aria-label="Evolución histórica del patrimonio"></canvas></div>
+          <p class="forecast-note" id="wealth-history-note">El histórico empieza a construirse desde esta actualización; no inventa valores anteriores.</p>
+        </section>
         <section class="content-grid">
           <article class="panel chart-panel">
             <div class="panel-heading"><div><h2>Evolución financiera</h2><p class="muted">Ingresos frente a gastos en los últimos meses</p></div><span class="chart-tag"><span class="live-dot"></span> Últimos 6 meses</span></div>
