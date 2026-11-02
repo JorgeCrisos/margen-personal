@@ -112,3 +112,8 @@ La versión incluye `icons/apple-touch-icon.png` (180×180), además de iconos P
 Esta versión incorpora navegación inferior desplazable en pantallas pequeñas, tarjetas y gráficos reorganizados, tablas con desplazamiento horizontal, formularios con controles táctiles y diálogos tipo hoja inferior en iPhone. También registra el service worker en HTTPS y actualiza la caché a `margen-personal-shell-v4`.
 
 Para que iOS recoja los cambios visuales, publica los archivos y elimina el acceso directo anterior de la pantalla de inicio. Después abre la web en Safari y vuelve a usar **Compartir → Añadir a pantalla de inicio**.
+
+
+## Saldos bancarios y movimientos (02/11/2026)
+
+Ejecuta `supabase/migration-2026-11-02-bank-movements.sql` una sola vez en Supabase SQL Editor. En cada banco, introduce como saldo inicial el saldo real que tenía el 01/11/2026. Desde esa fecha, cada gasto o ingreso debe asociarse a una cuenta: los gastos se restan y los ingresos se suman automáticamente. Los movimientos antiguos sin cuenta asociada se conservan y no alteran los saldos iniciales. Editar o eliminar un movimiento recalcula el saldo porque este se deriva de los movimientos guardados, sin modificar el saldo inicial.
