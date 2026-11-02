@@ -6,7 +6,7 @@ const categories = {
 const palette = ["#3d8058","#d7a64b","#6b8eae","#c97b65","#9c88bd","#75aaa1","#d18dba","#9da67a","#b6a18d","#8b9ca9"];
 const currency = new Intl.NumberFormat("es-ES", {style:"currency",currency:"EUR"});
 const BANK_BALANCE_CUTOFF = "2026-11-01";
-let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, toastTimer = null;
+let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], wealthSnapshots = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, wealthHistoryChart = null, toastTimer = null;
 
 function setStatus(text, connected=false) { $("connection-state").textContent = text; $("connection-state").classList.toggle("connected", connected); if (!connected) $("connection-state").innerHTML = "<i></i>" + text; else $("connection-state").innerHTML = "<i></i>" + text; }
 function show(id, yes=true) { $(id).classList.toggle("hidden", !yes); }
@@ -75,7 +75,7 @@ async function saveTransaction(event) {
   try {
     const result=editId ? await supabase.from("transactions").update(payload).eq("id",editId).select().single() : await supabase.from("transactions").insert(payload).select().single();
     if(result.error) throw result.error;
-    closeDialog(); await loadTransactions(); toast(editId?"Movimiento actualizado":"Movimiento guardado");
+    closeDialog(); await loadTransactions(); await loadWealth(); toast(editId?"Movimiento actualizado":"Movimiento guardado");
   } catch(e) { $("tx-error").textContent="No se ha podido guardar. Comprueba la conexión y las políticas de seguridad."; console.error(e); }
   finally { $("save-tx").disabled=false; $("save-tx").textContent="Guardar movimiento"; }
 }
@@ -86,7 +86,7 @@ async function deleteTransaction(id) {
   if(!confirm("¿Quieres eliminar este movimiento? Esta acción no se puede deshacer.")) return;
   const {error}=await supabase.from("transactions").delete().eq("id",id);
   if(error){toast("No se ha podido eliminar el movimiento.");console.error(error);return;}
-  await loadTransactions();toast("Movimiento eliminado");
+  await loadTransactions(); await loadWealth(); toast("Movimiento eliminado");
 }
 function filteredRows() {
   const search=$("search-filter").value.trim().toLowerCase(), type=$("type-filter").value, cat=$("category-filter").value;
@@ -102,8 +102,26 @@ function render() {
   $("metric-count").textContent=String(period.length);
   const cats=[...new Set(rows.map(r=>r.category))].sort((a,b)=>a.localeCompare(b,"es"));
   const cf=$("category-filter"), old=cf.value; cf.replaceChildren(new Option("Todas las categorías","all")); cats.forEach(c=>cf.add(new Option(c,c))); if(cats.includes(old))cf.value=old;
-  renderTransactions(filteredRows()); renderCharts(period);
+  renderTransactions(filteredRows()); renderCharts(period); renderForecast(period);
 }
+function renderForecast(period) {
+  const now=new Date(), year=now.getFullYear(), month=now.getMonth(), daysInMonth=new Date(year,month+1,0).getDate();
+  const today=now.getDate(), remaining=Math.max(0,daysInMonth-today);
+  const monthRows=rows.filter(r=>r.transaction_date.startsWith(`${year}-${String(month+1).padStart(2,"0")}`));
+  const income=monthRows.filter(r=>r.type==="income").reduce((s,r)=>s+Number(r.amount),0);
+  const expense=monthRows.filter(r=>r.type==="expense").reduce((s,r)=>s+Number(r.amount),0);
+  const saving=income-expense, daily=expense/Math.max(1,today), projectedExpense=expense+daily*remaining;
+  // No se extrapolan ingresos: los ingresos futuros no registrados no se dan por seguros.
+  const projected=income-projectedExpense, rate=income>0?saving/income*100:null;
+  $("forecast-income").textContent=fmt(income);$("forecast-expense").textContent=fmt(expense);$("forecast-saving").textContent=fmt(saving);
+  $("forecast-projected").textContent=fmt(projected);$("forecast-projected").style.color=projected<0?"#bd654e":"#286b53";
+  $("forecast-rate").textContent=rate===null?"—":`${rate.toLocaleString("es-ES",{maximumFractionDigits:1})}%`;
+  $("forecast-daily").textContent=fmt(daily);$("forecast-days").textContent=String(remaining);
+  const confidence=monthRows.length<5?"Estimación inicial":monthRows.length<12?"Estimación orientativa":"Estimación basada en tus registros";
+  $("forecast-confidence").textContent=confidence;
+  $("forecast-note").textContent=monthRows.length===0?"Registra tus primeros movimientos para activar la previsión.":`Proyección conservadora: mantiene el ritmo medio de gasto diario y solo cuenta los ingresos ya registrados. ${monthRows.length} movimientos considerados.`;
+}
+
 function renderTransactions(list) {
   const tbody=$("transactions-body");tbody.replaceChildren();
   $("result-count").textContent=`${list.length} ${list.length===1?"movimiento":"movimientos"}`;
@@ -164,10 +182,33 @@ function renderWealth(){
   $("wealth-updated").textContent=`${banks.length} ${banks.length===1?"cuenta":"cuentas"} · ${positions.length} ${positions.length===1?"posición":"posiciones"} · Dividendos netos: ${eur(dividendsNet)}`;
   populatePositionSelects();
 }
+async function loadWealthSnapshots() {
+  const {data,error}=await supabase.from("wealth_snapshots").select("snapshot_date,bank_total_eur,investment_total_eur,net_worth_eur").order("snapshot_date",{ascending:true}).limit(400);
+  if(error) { console.warn("No se pudo cargar el histórico de patrimonio:",error.message); wealthSnapshots=[]; return; }
+  wealthSnapshots=data||[];
+}
+async function saveWealthSnapshot() {
+  const snapshot_date=localDate(), bank_total_eur=Number(totalBanks().toFixed(2)), investment_total_eur=Number(totalInvestments().toFixed(2));
+  const payload={user_id:user.id,snapshot_date,bank_total_eur,investment_total_eur,net_worth_eur:Number((bank_total_eur+investment_total_eur).toFixed(2))};
+  const {error}=await supabase.from("wealth_snapshots").upsert(payload,{onConflict:"user_id,snapshot_date"});
+  if(error) console.warn("No se pudo guardar la fotografía patrimonial:",error.message);
+  else { const existing=wealthSnapshots.findIndex(x=>x.snapshot_date===snapshot_date); if(existing>=0)wealthSnapshots[existing]=payload;else wealthSnapshots.push(payload); }
+}
+function renderWealthHistory() {
+  const canvas=$("wealth-history-chart"); if(!canvas||!window.Chart)return;
+  if(wealthHistoryChart)wealthHistoryChart.destroy();
+  const recent=wealthSnapshots.slice(-365), labels=recent.map(x=>new Date(x.snapshot_date+"T12:00:00").toLocaleDateString("es-ES",{day:"2-digit",month:"short"}));
+  if(!recent.length){$("wealth-history-note").textContent="Aún no hay fotografías guardadas. Se generará una automáticamente cada día que abras la aplicación.";return;}
+  wealthHistoryChart=new Chart(canvas,{type:"line",data:{labels,datasets:[{label:"Patrimonio neto",data:recent.map(x=>Number(x.net_worth_eur)),borderColor:"#398665",backgroundColor:"rgba(57,134,101,.12)",fill:true,tension:.25,pointRadius:recent.length>40?0:2,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:"index"},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Patrimonio: ${fmt(c.raw)}`}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,font:{size:10}}},y:{grid:{color:"#eef0eb"},ticks:{callback:v=>`${(v/1000).toLocaleString("es-ES")}k €`}}}}});
+  $("wealth-history-note").textContent=`${recent.length} fotografías guardadas. El histórico comienza el ${new Date(recent[0].snapshot_date+"T12:00:00").toLocaleDateString("es-ES")}; los datos anteriores no se reconstruyen artificialmente.`;
+}
 async function loadWealth(){
   const requests=await Promise.all([supabase.from("bank_accounts").select("*").order("name"),supabase.from("investment_positions").select("*").order("name"),supabase.from("investment_transactions").select("*").order("trade_date",{ascending:false}),supabase.from("dividends").select("*").order("payment_date",{ascending:false})]);
   const names=["bancos","cartera","operaciones","dividendos"];requests.forEach((r,i)=>{if(r.error)throw new Error(`Error al cargar ${names[i]}: ${r.error.message}`)});
-  [banks,positions,trades,dividends]=requests.map(r=>r.data||[]);renderWealth();populateBankSelect($("tx-bank")?.value||"");render();
+  [banks,positions,trades,dividends]=requests.map(r=>r.data||[]);
+  await loadWealthSnapshots();
+  await saveWealthSnapshot();
+  renderWealth();renderWealthHistory();populateBankSelect($("tx-bank")?.value||"");render();
 }
 function populateBankSelect(selected=""){const el=$("tx-bank");if(!el)return;el.replaceChildren(new Option("Selecciona un banco…",""));banks.forEach(b=>el.add(new Option(`${b.name} · ${eur(currentBankBalance(b))}`,b.id)));if(banks.some(b=>b.id===selected))el.value=selected;else if(banks.length===1)el.value=banks[0].id;$("save-tx").disabled=banks.length===0;}
 function populatePositionSelects(){["trade-position","dividend-position"].forEach(id=>{const el=$(id),old=el.value;el.replaceChildren();positions.forEach(p=>el.add(new Option(`${p.name} (${p.ticker})`,p.id)));if(positions.some(p=>p.id===old))el.value=old;});$("add-trade").disabled=positions.length===0;$("add-dividend").disabled=positions.length===0;}
@@ -267,7 +308,7 @@ async function enterApp(currentUser) {
   if(!$("month-filter").value)$("month-filter").value=localDate().slice(0,7);
   try { await loadTransactions(); await loadWealth(); } catch(e){console.error(e);toast("Error al cargar datos. Ejecuta el SQL actualizado y revisa las políticas RLS.");}
 }
-async function exitApp() { user=null;rows=[];if(trendChart)trendChart.destroy();if(categoryChart)categoryChart.destroy();show("app-view",false);show("auth-view",true);show("logout-btn",false);setStatus("Sin sesión"); }
+async function exitApp() { user=null;rows=[];if(trendChart)trendChart.destroy();if(categoryChart)categoryChart.destroy();if(wealthHistoryChart)wealthHistoryChart.destroy();show("app-view",false);show("auth-view",true);show("logout-btn",false);setStatus("Sin sesión"); }
 $("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
