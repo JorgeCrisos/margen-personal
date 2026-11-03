@@ -8,7 +8,7 @@ const currency = new Intl.NumberFormat("es-ES", {style:"currency",currency:"EUR"
 const BANK_BALANCE_CUTOFF = "2026-11-01";
 let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], investmentCash = [], wealthSnapshots = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, wealthHistoryChart = null, toastTimer = null;
 
-function setStatus(text, connected=false) { $("connection-state").textContent = text; $("connection-state").classList.toggle("connected", connected); if (!connected) $("connection-state").innerHTML = "<i></i>" + text; else $("connection-state").innerHTML = "<i></i>" + text; }
+function setStatus(text, connected=false) { const markup = "<i></i>" + text; const top = $("connection-state"); if(top){top.innerHTML=markup;top.classList.toggle("connected",connected);} const menu=$("connection-state-menu"); if(menu){menu.innerHTML=markup;menu.classList.toggle("connected",connected);} }
 function show(id, yes=true) { $(id).classList.toggle("hidden", !yes); }
 function escapeHtml(value="") { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function localDate(date=new Date()) { const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0"); return `${y}-${m}-${d}`; }
@@ -372,7 +372,26 @@ $("auth-form").addEventListener("submit", async (e) => {
       : "Crear cuenta";
   }
 });
+$("user-menu-toggle").addEventListener("click",()=>{
+  const panel=$("user-menu-panel"), opening=panel.classList.contains("hidden");
+  panel.classList.toggle("hidden",!opening);
+  $("user-menu-toggle").setAttribute("aria-expanded",String(opening));
+});
+document.addEventListener("click",event=>{
+  if(!event.target.closest(".user-menu")){
+    $("user-menu-panel").classList.add("hidden");
+    $("user-menu-toggle").setAttribute("aria-expanded","false");
+  }
+});
+document.addEventListener("keydown",event=>{
+  if(event.key==="Escape"){
+    $("user-menu-panel").classList.add("hidden");
+    $("user-menu-toggle").setAttribute("aria-expanded","false");
+  }
+});
 $("logout-btn").addEventListener("click",async()=>{
+  $("user-menu-panel").classList.add("hidden");
+  $("user-menu-toggle").setAttribute("aria-expanded","false");
   const button=$("logout-btn");
   button.disabled=true;
   try {
