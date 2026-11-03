@@ -46,9 +46,9 @@ serve(async req=>{
         let symbol=String(p.provider_symbol||known?.symbol||ticker).toUpperCase();
         // When the user has not selected a MIC, discover only an unambiguous exact ticker match.
         if(!mic){
-          const found=await api("symbol_search?symbol="+encodeURIComponent(expectedIsin||symbol)+"&outputsize=120",key);
+          const found=await api("symbol_search?symbol="+encodeURIComponent(symbol)+"&outputsize=120",key);
           const matches=(found.data||[]).filter((x:any)=>String(x.symbol||"").toUpperCase()===symbol);
-          if(matches.length!==1) throw new Error(matches.length?"Ticker ambiguo: indica el código MIC de tu bolsa":"No se ha encontrado una coincidencia exacta; añade ISIN y MIC");
+          if(matches.length!==1) throw new Error(matches.length?"Ticker ambiguo: indica el código MIC de tu bolsa":"No se ha encontrado una coincidencia exacta; añade el MIC de tu bolsa");
           mic=String(matches[0].mic_code||"").toUpperCase();exchange=String(matches[0].exchange||"");
           if(!mic) throw new Error("El proveedor no identifica la bolsa (MIC)");
         }
