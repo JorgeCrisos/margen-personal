@@ -8,28 +8,19 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Margen Personal">
-  <link rel="manifest" href="./manifest.webmanifest?v=23">
+  <link rel="manifest" href="./manifest.webmanifest?v=24">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <meta name="description" content="Panel privado de finanzas personales">
   <title>Margen Personal · Finanzas</title>
-  <link rel="stylesheet" href="./styles.css?v=23">
+  <link rel="stylesheet" href="./styles.css?v=24">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
   <main class="shell">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="Margen Personal inicio">
-        <span class="brand-mark"><span></span><span></span><span></span></span>
-        <span>margen<span class="brand-light"> personal</span></span>
-      </a>
-      <div class="topbar-right">
-        <span id="connection-state" class="status"><i></i> Sin conectar</span>
-        <button id="logout-btn" class="button button-quiet hidden" type="button">Cerrar sesión</button>
-      </div>
-    </header>
+
 
     <section id="setup-notice" class="notice hidden">
       <strong>Falta configurar la conexión.</strong>
@@ -181,6 +172,6 @@
     </form>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js?v=23"></script><script type="module" src="./advanced.js?v=23"></script>
+  <script type="module" src="./app.js?v=24"></script><script type="module" src="./advanced.js?v=24"></script>
 </body>
 </html>
