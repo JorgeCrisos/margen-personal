@@ -172,7 +172,7 @@ function renderWealth(){
   setShare("wealth-bank-share","bank-share-bar",bankTotal,total);setShare("wealth-stock-share","stock-share-bar",stock,total);setShare("wealth-etf-share","etf-share-bar",etf,total);$("dividend-total").textContent=eur(dividendsNet);
   const tbody=$("banks-body");tbody.replaceChildren();show("banks-empty",banks.length===0);banks.forEach(b=>{const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">▤</span><div><div class="movement-title">${escapeHtml(b.name)}</div><div class="movement-subtitle">Saldo inicial 01/11/2026 · ${eur(b.balance_eur)}</div></div></div></td><td><span class="category-pill">${escapeHtml(b.account_type)}</span></td><td class="align-right amount">${eur(currentBankBalance(b))}</td><td class="align-right">${pct(share(currentBankBalance(b),total))}</td><td class="align-right"><button class="row-action" data-bank-edit="${b.id}" title="Editar saldo">✎</button><button class="row-action" data-bank-delete="${b.id}" title="Eliminar cuenta">×</button></td>`;tbody.append(tr)});
   tbody.querySelectorAll("[data-bank-edit]").forEach(btn=>btn.addEventListener("click",()=>editBank(btn.dataset.bankEdit)));tbody.querySelectorAll("[data-bank-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteBank(btn.dataset.bankDelete)));
-  const itbody=$("investments-body");itbody.replaceChildren();show("investments-empty",positions.length===0);positions.forEach(p=>{const value=positionValue(p),cost=Number(p.quantity||0)*Number(p.average_cost_eur||0),gain=value-cost,ret=cost>0?gain/cost*100:0;const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">${p.asset_type==="etf"?"◫":"↗"}</span><div><div class="movement-title">${escapeHtml(p.name)}</div><div class="movement-subtitle">${escapeHtml(p.ticker.toUpperCase())}</div></div></div></td><td><span class="category-pill">${assetTypes[p.asset_type]||"Otro"}</span></td><td>${Number(p.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${p.current_price_eur==null?"—":eur(p.current_price_eur)}</td><td class="align-right amount">${eur(value)}</td><td class="align-right"><span class="amount ${gain>=0?"income":"expense"}">${gain>=0?"+":"−"}${eur(Math.abs(gain))} (${pct(ret)})</span></td><td class="align-right"><button class="row-action" data-position-edit="${p.id}" title="Editar">✎</button><button class="row-action" data-position-delete="${p.id}" title="Eliminar">×</button></td>`;itbody.append(tr)});
+  const itbody=$("investments-body");itbody.replaceChildren();show("investments-empty",positions.length===0);positions.forEach(p=>{const value=positionValue(p),cost=Number(p.quantity||0)*Number(p.average_cost_eur||0),gain=value-cost,ret=cost>0?gain/cost*100:0;const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">${p.asset_type==="etf"?"◫":"↗"}</span><div><div class="movement-title">${escapeHtml(p.name)}</div><div class="movement-subtitle">${escapeHtml(p.ticker.toUpperCase())}${p.exchange?" · "+escapeHtml(p.exchange):""}${p.quote_status==="error"?" · Cotización pendiente":""}</div></div></div></td><td><span class="category-pill">${assetTypes[p.asset_type]||"Otro"}</span></td><td>${Number(p.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${p.current_price_eur==null?"—":eur(p.current_price_eur)}</td><td class="align-right amount">${eur(value)}</td><td class="align-right"><span class="amount ${gain>=0?"income":"expense"}">${gain>=0?"+":"−"}${eur(Math.abs(gain))} (${pct(ret)})</span></td><td class="align-right"><button class="row-action" data-position-edit="${p.id}" title="Editar">✎</button><button class="row-action" data-position-delete="${p.id}" title="Eliminar">×</button></td>`;itbody.append(tr)});
   itbody.querySelectorAll("[data-position-edit]").forEach(btn=>btn.addEventListener("click",()=>editPosition(btn.dataset.positionEdit)));itbody.querySelectorAll("[data-position-delete]").forEach(btn=>btn.addEventListener("click",()=>deletePosition(btn.dataset.positionDelete)));
   const tradeBody=$("trades-body");tradeBody.replaceChildren();show("trades-empty",trades.length===0);trades.slice(0,12).forEach(t=>{const p=positions.find(x=>x.id===t.position_id);const tr=document.createElement("tr");tr.innerHTML=`<td>${new Date(t.trade_date+"T12:00:00").toLocaleDateString("es-ES")}</td><td>${escapeHtml(p?.name||t.asset_name||"Activo eliminado")}</td><td><span class="category-pill">${tradeTypes[t.trade_type]||t.trade_type}</span></td><td>${Number(t.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${eur(t.price_eur)}</td><td class="align-right amount ${(Number(t.realized_pnl_eur||0)>=0)?"income":"expense"}">${t.trade_type==="sell"?`${Number(t.realized_pnl_eur)>=0?"+":"−"}${eur(Math.abs(Number(t.realized_pnl_eur||0)))}`:"—"}</td>`;tradeBody.append(tr)});
   const db=$("dividend-list");db.replaceChildren();if(!dividends.length)db.innerHTML='<p class="muted">Todavía no hay dividendos registrados.</p>';dividends.slice(0,4).forEach(d=>{const p=positions.find(x=>x.id===d.position_id);const div=document.createElement("div");div.className="dividend-row";div.innerHTML=`<div><strong>${escapeHtml(p?.name||d.asset_name||"Dividendo")}</strong><span>${new Date(d.payment_date+"T12:00:00").toLocaleDateString("es-ES")}</span></div><strong>${eur(d.net_amount_eur)}</strong>`;db.append(div)});
@@ -251,7 +251,16 @@ $("bank-form").addEventListener("submit",async e=>{
     submit.disabled=false;submit.textContent=originalText;
   }
 });
-function editPosition(id){const p=positions.find(x=>x.id===id);if(!p)return;const name=prompt("Nombre del activo:",p.name);if(name===null)return;const ticker=prompt("Ticker:",p.ticker);if(ticker===null)return;const qty=prompt("Títulos actuales:",p.quantity);if(qty===null)return;const cost=prompt("Coste medio por título en EUR:",p.average_cost_eur);if(cost===null)return;const type=prompt("Tipo (stock, etf, fund, crypto, other):",p.asset_type);if(type===null)return;savePosition({id,name:name.trim(),ticker:ticker.trim().toUpperCase(),quantity:Number(qty),average_cost_eur:Number(cost),asset_type:assetTypes[type]?type:"other"})}
+function openPositionDialog(p=null){
+  const form=$("position-form");form.reset();$("asset-error").textContent="";
+  $("position-dialog").dataset.editId=p?.id||"";
+  $("position-dialog").querySelector("h2").textContent=p?"Editar activo":"Añadir activo";
+  $("asset-name").value=p?.name||"";$("asset-ticker").value=p?.ticker||"";$("asset-type").value=p?.asset_type||"stock";
+  $("asset-isin").value=p?.isin||"";$("asset-mic").value=p?.mic_code||"";$("asset-exchange").value=p?.exchange||"";$("asset-provider-symbol").value=p?.provider_symbol||"";
+  $("asset-quantity").value=p?.quantity??"";$("asset-cost").value=p?.average_cost_eur??"";
+  $("position-dialog").showModal();
+}
+function editPosition(id){const p=positions.find(x=>x.id===id);if(p)openPositionDialog(p)}
 async function savePosition(payload){
   if(!supabase||!user){$("asset-error").textContent="Tu sesión no está activa. Vuelve a iniciar sesión.";return false;}
   if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<=0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, cantidad y coste medio.";return false;}
@@ -267,13 +276,45 @@ async function savePosition(payload){
   }
 }
 async function deletePosition(id){if(!confirm("Eliminar este activo también puede afectar a la vista de su historial. ¿Continuar?"))return;const {error}=await supabase.from("investment_positions").delete().eq("id",id);if(error){toast("No se ha podido eliminar el activo");return}await loadWealth()}
-$("add-position").addEventListener("click",()=>{$("position-form").reset();$("asset-error").textContent="";$("position-dialog").showModal()});
+$("add-position").addEventListener("click",()=>openPositionDialog());
 $("position-form").addEventListener("submit",async e=>{
   e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]'),oldText=submit.textContent;submit.disabled=true;submit.textContent="Guardando…";$("asset-error").textContent="";
-  try {const saved=await savePosition({name:$("asset-name").value.trim(),ticker:$("asset-ticker").value.trim().toUpperCase(),asset_type:$("asset-type").value,quantity:Number($("asset-quantity").value),average_cost_eur:Number($("asset-cost").value)});if(saved){form.reset();$("position-dialog").close();}}
-  catch(error){console.error(error);$("asset-error").textContent=`Error inesperado: ${error?.message||error}`;}
+  try {
+    const editId=$("position-dialog").dataset.editId||null;
+    const saved=await savePosition({id:editId||undefined,name:$("asset-name").value.trim(),ticker:$("asset-ticker").value.trim().toUpperCase(),asset_type:$("asset-type").value,isin:$("asset-isin").value.trim().toUpperCase()||null,mic_code:$("asset-mic").value.trim().toUpperCase()||null,exchange:$("asset-exchange").value.trim()||null,provider_symbol:$("asset-provider-symbol").value.trim().toUpperCase()||null,quantity:Number($("asset-quantity").value),average_cost_eur:Number($("asset-cost").value)});
+    if(saved){form.reset();$("position-dialog").close();}
+  } catch(error){console.error(error);$("asset-error").textContent=`Error inesperado: ${error?.message||error}`;}
   finally{submit.disabled=false;submit.textContent=oldText;}
 });
+async function refreshQuotes(){
+  if(!positions.length){toast("Añade activos a la cartera primero");return}
+  $("refresh-quotes").disabled=true;$("quote-status").textContent="Comprobando símbolo, bolsa y cotización…";
+  try{
+    const payload=positions.map(p=>({id:p.id,name:p.name,ticker:p.ticker,isin:p.isin||null,mic_code:p.mic_code||null,exchange:p.exchange||null,provider_symbol:p.provider_symbol||null,asset_type:p.asset_type}));
+    const {data,error}=await supabase.functions.invoke("get-quotes",{body:{positions:payload}});
+    if(error)throw error;
+    if(!Array.isArray(data?.quotes))throw new Error(data?.error||"Respuesta de cotizaciones no válida");
+    let updated=0;const problems=[];
+    for(const q of data.quotes){
+      const p=positions.find(x=>x.id===q.position_id);if(!p)continue;
+      if(Number.isFinite(Number(q.price_eur))&&Number(q.price_eur)>0&&q.validated===true){
+        const patch={current_price_eur:Number(q.price_eur),quote_currency:q.currency,quote_updated_at:q.datetime?new Date(q.datetime+"T12:00:00Z").toISOString():new Date().toISOString(),quote_provider:"Twelve Data",quote_datetime:q.datetime||null,quote_status:"ok",quote_error:null,provider_symbol:q.symbol||p.provider_symbol,mic_code:q.mic_code||p.mic_code,exchange:q.exchange||p.exchange};
+        const {error:upErr}=await supabase.from("investment_positions").update(patch).eq("id",p.id);
+        if(upErr){problems.push(p.ticker+": no se pudo guardar el precio");continue}updated++;
+      }else{
+        const reason=q.error||"Cotización no validada";
+        await supabase.from("investment_positions").update({quote_status:"error",quote_error:reason}).eq("id",p.id);
+        problems.push(p.ticker+": "+reason);
+      }
+    }
+    await loadWealth();
+    $("quote-status").textContent=problems.length?`Actualizadas ${updated}/${positions.length}. Pendientes: ${problems.join(" · ")}`:`Cotizaciones verificadas: ${updated}/${positions.length} · ${new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}`;
+    toast(problems.length?"Actualización parcial: revisa los avisos":"Cotizaciones verificadas correctamente");
+  }catch(e){console.error(e);$("quote-status").textContent="Error al consultar cotizaciones: "+(e.message||"comprueba la función y la API key");toast("No se pudieron actualizar las cotizaciones")}
+  finally{$("refresh-quotes").disabled=false}
+}
+$("refresh-quotes").addEventListener("click",refreshQuotes);
+
 $("add-trade").addEventListener("click",()=>{if(!positions.length)return;$("trade-form").reset();$("trade-date").value=localDate();$("trade-fees").value="0";$("trade-post-cash").checked=true;$("trade-error").textContent="";populatePositionSelects();$("trade-bank").required=true;$("trade-dialog").showModal()});
 $("trade-post-cash").addEventListener("change",()=>{$("trade-bank").required=$("trade-post-cash").checked;});
 $("trade-form").addEventListener("submit",async e=>{e.preventDefault();const p=positions.find(x=>x.id===$("trade-position").value),type=$("trade-type").value,qty=Number($("trade-quantity").value),price=Number($("trade-price").value),fees=Number($("trade-fees").value),date=$("trade-date").value,postCash=$("trade-post-cash").checked,bankId=$("trade-bank").value;if(!p||!["buy","sell"].includes(type)||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<=0||!Number.isFinite(fees)||fees<0||!date){$("trade-error").textContent="Revisa los datos de la operación.";return}if(date<BANK_BALANCE_CUTOFF){$("trade-error").textContent="Registra operaciones nuevas desde el 01/11/2026 para no alterar saldos iniciales.";return}if(postCash&&!bankId){$("trade-error").textContent="Selecciona la cuenta bancaria o desmarca el registro del efectivo si ya está incluido.";return}const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;submit.textContent="Guardando…";try{const {error}=await supabase.rpc("record_investment_trade",{p_position_id:p.id,p_bank_account_id:postCash?bankId:null,p_trade_type:type,p_quantity:qty,p_price_eur:price,p_fees_eur:fees,p_trade_date:date,p_post_cash:postCash});if(error)throw error;$("trade-dialog").close();await loadTransactions();await loadWealth();toast(type==="buy"?"Compra registrada":"Venta registrada");}catch(err){$("trade-error").textContent=err.message||"No se pudo guardar la operación; no se han aplicado cambios parciales.";console.error(err)}finally{submit.disabled=false;submit.textContent="Guardar operación"}});
