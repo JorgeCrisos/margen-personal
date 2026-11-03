@@ -32,7 +32,8 @@ serve(async req=>{
     const {data:{user},error:authError}=await client.auth.getUser();
     if(authError||!user) return json({error:"Unauthorized"},401);
     const body=await req.json();
-    const positions=Array.isArray(body.positions)?body.positions.slice(0,30):[];
+    const positions=Array.isArray(body.positions)?body.positions:[];
+    if(positions.length>30) return json({error:"Máximo 30 activos por consulta. Divide la cartera en bloques."},400);
     if(!positions.length) return json({quotes:[]});
     const quotes=[];
     for(const raw of positions){
