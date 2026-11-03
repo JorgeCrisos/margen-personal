@@ -154,7 +154,7 @@ canvas { display: block; max-width: 100%; }
 
 
 
-/* Cabecera PWA móvil v22.
+/* Cabecera PWA móvil v23.
    En iPhone el área de estado/transición superior aplica desenfoque nativo.
    Se coloca toda la fila de contexto por debajo de esa zona, no detrás de ella. */
 .user-menu { position: relative; }
