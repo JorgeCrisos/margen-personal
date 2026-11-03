@@ -178,3 +178,16 @@ canvas { display: block; max-width: 100%; }
   .topbar .status { font-size: 12px; line-height: 1.2; }
   .topbar #logout-btn { font-size: 12px; line-height: 1.2; padding: 8px 4px; }
 }
+
+
+/* iPhone PWA: desplazar la cabecera por debajo de la barra de estado */
+@media (max-width: 700px) {
+  .topbar {
+    height: calc(48px + max(env(safe-area-inset-top, 0px), 60px));
+    min-height: calc(48px + max(env(safe-area-inset-top, 0px), 60px));
+    padding: max(env(safe-area-inset-top, 0px), 60px) 14px 0;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  .topbar-right { min-height: 44px; }
+}
