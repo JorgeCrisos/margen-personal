@@ -391,10 +391,7 @@ document.addEventListener("click",event=>{
   }
 });
 document.addEventListener("keydown",event=>{
-  if(event.key==="Escape"){
-    $("user-menu-panel").classList.add("hidden");
-    $("user-menu-toggle").setAttribute("aria-expanded","false");
-  }
+  if(event.key==="Escape") closeUserMenu();
 });
 $("logout-btn").addEventListener("click",async()=>{
   closeUserMenu();
