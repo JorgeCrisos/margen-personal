@@ -178,7 +178,7 @@ canvas { display: block; max-width: 100%; }
 }
 @media (max-width: 700px) {
   .shell {
-    padding-top: max(88px, calc(env(safe-area-inset-top, 0px) + 40px)) !important;
+    padding-top: max(48px, env(safe-area-inset-top, 0px)) !important;
     background: #fff;
   }
   .topbar { display: none !important; }
