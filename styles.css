@@ -154,8 +154,9 @@ canvas { display: block; max-width: 100%; }
 
 
 
-/* Cabecera PWA móvil v21: se oculta la barra superior vacía y se baja
-   la navegación de contexto por debajo del área de estado/efecto de iOS. */
+/* Cabecera PWA móvil v22.
+   En iPhone el área de estado/transición superior aplica desenfoque nativo.
+   Se coloca toda la fila de contexto por debajo de esa zona, no detrás de ella. */
 .user-menu { position: relative; }
 .user-avatar {
   appearance: none; -webkit-appearance: none; border: 0; padding: 0;
@@ -163,25 +164,31 @@ canvas { display: block; max-width: 100%; }
 }
 .user-avatar:focus-visible { outline: 2px solid #328060; outline-offset: 3px; }
 .user-menu-panel {
-  position: absolute; top: calc(100% + 9px); right: 0; z-index: 11000;
-  min-width: 174px; display: flex; flex-direction: column; align-items: stretch;
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 12000;
+  min-width: 184px; display: flex; flex-direction: column; align-items: stretch;
   gap: 10px; padding: 13px; background: #fff; border: 1px solid #e5eaf1;
   border-radius: 12px; box-shadow: 0 12px 32px #17243b20;
 }
 .user-menu-panel .status { justify-content: flex-start; font-size: 12px; }
 .user-menu-panel #logout-btn:not(.hidden) {
   display: flex; width: 100%; justify-content: center; align-items: center;
-  min-height: 40px; padding: 9px 12px; border: 1px solid #e9edf4;
+  min-height: 42px; padding: 9px 12px; border: 1px solid #e9edf4;
   border-radius: 8px; background: #f7f9fc; color: #39445a;
   font-size: 12px; white-space: nowrap;
 }
 @media (max-width: 700px) {
-  .shell { padding-top: 76px !important; background: #fff; }
+  .shell {
+    padding-top: max(124px, calc(env(safe-area-inset-top, 0px) + 72px)) !important;
+    background: #fff;
+  }
   .topbar { display: none !important; }
-  .dashboard-layout { display: block !important; min-height: calc(100dvh - 76px) !important; }
+  .dashboard-layout { display: block !important; min-height: calc(100dvh - 124px) !important; }
   .dashboard-main { padding-top: 0 !important; }
-  .dashboard-topline { margin-top: 0 !important; height: 46px; margin-bottom: 18px; }
+  .dashboard-topline {
+    position: relative; z-index: 20; overflow: visible;
+    margin-top: 0 !important; height: 46px; margin-bottom: 18px;
+  }
   .topline-actions { gap: 7px; }
   .user-avatar { width: 34px; height: 34px; }
-  .user-menu-panel { top: calc(100% + 8px); min-width: 180px; }
+  .user-menu-panel { top: calc(100% + 8px); min-width: 184px; }
 }
