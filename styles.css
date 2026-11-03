@@ -180,15 +180,14 @@ canvas { display: block; max-width: 100%; }
 }
 
 
-/* iPhone PWA: cabecera siempre visible en la primera pantalla y al desplazarse.
-   Se fija justo debajo del área segura del sistema y se reserva su espacio en el flujo. */
+/* iPhone PWA: colocar la fila debajo de la barra de estado.
+   En standalone de iOS el inset puede devolver 0; usar un fallback explícito. */
 @media (max-width: 700px) {
-  .shell {
-    padding-top: calc(48px + env(safe-area-inset-top, 0px));
-  }
+  :root { --ios-status-area: max(env(safe-area-inset-top, 0px), 32px); }
+  .shell { padding-top: calc(var(--ios-status-area) + 48px); }
   .topbar {
     position: fixed;
-    top: env(safe-area-inset-top, 0px);
+    top: var(--ios-status-area);
     left: 0;
     right: 0;
     width: 100%;
@@ -198,16 +197,21 @@ canvas { display: block; max-width: 100%; }
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    z-index: 1000;
+    z-index: 10000;
     background: #fff;
     border-bottom: 1px solid #e9edf4;
     box-sizing: border-box;
     transform: none;
+    visibility: visible;
   }
   .topbar-right {
-    min-height: 44px;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    min-height: 44px;
     gap: 12px;
+    visibility: visible;
   }
+  #connection-state { display: inline-flex !important; visibility: visible !important; }
+  #logout-btn:not(.hidden) { display: inline-flex !important; visibility: visible !important; }
 }
