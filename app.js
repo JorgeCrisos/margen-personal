@@ -310,7 +310,7 @@ async function enterApp(currentUser) {
   if(!$("month-filter").value)$("month-filter").value=localDate().slice(0,7);
   try { await loadTransactions(); await loadWealth(); } catch(e){console.error(e);toast("Error al cargar datos. Ejecuta el SQL actualizado y revisa las políticas RLS.");}
 }
-async function exitApp() { user=null;rows=[];if(trendChart)trendChart.destroy();if(categoryChart)categoryChart.destroy();if(wealthHistoryChart)wealthHistoryChart.destroy();show("app-view",false);show("auth-view",true);show("logout-btn",false);setStatus("Sin sesión"); }
+async function exitApp() { if(typeof closeUserMenu==="function")closeUserMenu(); user=null;rows=[];if(trendChart)trendChart.destroy();if(categoryChart)categoryChart.destroy();if(wealthHistoryChart)wealthHistoryChart.destroy();show("app-view",false);show("auth-view",true);show("logout-btn",false);setStatus("Sin sesión"); }
 $("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -372,15 +372,22 @@ $("auth-form").addEventListener("submit", async (e) => {
       : "Crear cuenta";
   }
 });
+function closeUserMenu(){
+  const panel=$("user-menu-panel");
+  if(!panel)return;
+  panel.classList.add("hidden");
+  panel.setAttribute("aria-hidden","true");
+  $("user-menu-toggle").setAttribute("aria-expanded","false");
+}
 $("user-menu-toggle").addEventListener("click",()=>{
   const panel=$("user-menu-panel"), opening=panel.classList.contains("hidden");
   panel.classList.toggle("hidden",!opening);
+  panel.setAttribute("aria-hidden",String(!opening));
   $("user-menu-toggle").setAttribute("aria-expanded",String(opening));
 });
 document.addEventListener("click",event=>{
   if(!event.target.closest(".user-menu")){
-    $("user-menu-panel").classList.add("hidden");
-    $("user-menu-toggle").setAttribute("aria-expanded","false");
+    closeUserMenu();
   }
 });
 document.addEventListener("keydown",event=>{
@@ -390,8 +397,7 @@ document.addEventListener("keydown",event=>{
   }
 });
 $("logout-btn").addEventListener("click",async()=>{
-  $("user-menu-panel").classList.add("hidden");
-  $("user-menu-toggle").setAttribute("aria-expanded","false");
+  closeUserMenu();
   const button=$("logout-btn");
   button.disabled=true;
   try {
