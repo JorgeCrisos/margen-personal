@@ -288,14 +288,27 @@ $("position-form").addEventListener("submit",async e=>{
 });
 async function refreshQuotes(){
   if(!positions.length){toast("Añade activos a la cartera primero");return}
-  $("refresh-quotes").disabled=true;$("quote-status").textContent="Comprobando símbolo, bolsa y cotización…";
+  $("refresh-quotes").disabled=true;
+  $("quote-status").textContent=`Consultando ${positions.length} activos por bloques…`;
   try{
     const payload=positions.map(p=>({id:p.id,name:p.name,ticker:p.ticker,isin:p.isin||null,mic_code:p.mic_code||null,exchange:p.exchange||null,provider_symbol:p.provider_symbol||null,asset_type:p.asset_type}));
-    const {data,error}=await supabase.functions.invoke("get-quotes",{body:{positions:payload}});
-    if(error)throw error;
-    if(!Array.isArray(data?.quotes))throw new Error(data?.error||"Respuesta de cotizaciones no válida");
+    const quotes=[];
+    const batchSize=30;
+    for(let start=0;start<payload.length;start+=batchSize){
+      const batch=payload.slice(start,start+batchSize);
+      $("quote-status").textContent=`Consultando activos ${start+1}–${start+batch.length} de ${payload.length}…`;
+      try{
+        const {data,error}=await supabase.functions.invoke("get-quotes",{body:{positions:batch}});
+        if(error)throw error;
+        if(!Array.isArray(data?.quotes))throw new Error(data?.error||"Respuesta de cotizaciones no válida");
+        quotes.push(...data.quotes);
+      }catch(batchError){
+        const reason=batchError?.message||"No se pudo consultar este bloque";
+        batch.forEach(p=>quotes.push({position_id:p.id,error:reason}));
+      }
+    }
     let updated=0;const problems=[];
-    for(const q of data.quotes){
+    for(const q of quotes){
       const p=positions.find(x=>x.id===q.position_id);if(!p)continue;
       if(Number.isFinite(Number(q.price_eur))&&Number(q.price_eur)>0&&q.validated===true){
         const patch={current_price_eur:Number(q.price_eur),quote_currency:q.currency,quote_updated_at:new Date().toISOString(),quote_provider:"Twelve Data",quote_datetime:q.datetime||null,quote_status:"ok",quote_error:null,provider_symbol:q.symbol||p.provider_symbol,mic_code:q.mic_code||p.mic_code,exchange:q.exchange||p.exchange};
