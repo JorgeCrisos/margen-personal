@@ -117,3 +117,14 @@ Para que iOS recoja los cambios visuales, publica los archivos y elimina el acce
 ## Saldos bancarios y movimientos (02/11/2026)
 
 Ejecuta `supabase/migration-2026-11-02-bank-movements.sql` una sola vez en Supabase SQL Editor. En cada banco, introduce como saldo inicial el saldo real que tenía el 01/11/2026. Desde esa fecha, cada gasto o ingreso debe asociarse a una cuenta: los gastos se restan y los ingresos se suman automáticamente. Los movimientos antiguos sin cuenta asociada se conservan y no alteran los saldos iniciales. Editar o eliminar un movimiento recalcula el saldo porque este se deriva de los movimientos guardados, sin modificar el saldo inicial.
+
+
+## Cotizaciones por instrumento y mercado (noviembre de 2026)
+
+La cartera identifica ahora cada activo mediante ticker, ISIN, MIC de mercado y símbolo de proveedor. La función `get-quotes` debe desplegarse de nuevo en Supabase después de actualizar su código en GitHub. Configura `TWELVEDATA_API_KEY` como secreto de la Edge Function, nunca en el frontend.
+
+Para las posiciones existentes, la migración `supabase/migration-2026-11-03-market-identifiers.sql` añade los campos de identificación y asocia los cinco instrumentos conocidos sin modificar títulos, costes ni saldos. Ejecuta esa migración una sola vez en Supabase SQL Editor.
+
+Al añadir activos nuevos, conserva el ticker que aparece en el bróker y añade ISIN y MIC de la bolsa de cotización. La consulta valida que el proveedor devuelve el instrumento y el MIC esperados; si no puede demostrar la coincidencia, no actualiza el precio. Los errores quedan visibles en el estado de cotizaciones y el último precio válido se conserva.
+
+La función usa Twelve Data como proveedor de datos. La cobertura, latencia y acceso a mercados dependen del plan contratado y de las licencias del proveedor; el software no puede garantizar disponibilidad permanente ni datos en tiempo real para todos los mercados.
