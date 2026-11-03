@@ -219,7 +219,7 @@ canvas { display: block; max-width: 100%; }
 /* Margen Personal — cabecera fija para iPhone con safe area real */
 @media (max-width: 700px) {
   :root {
-    --mp-safe-top: max(env(safe-area-inset-top, 0px), 59px);
+    --mp-safe-top: 0px;
     --mp-header-height: 48px;
   }
   .shell {
@@ -227,7 +227,7 @@ canvas { display: block; max-width: 100%; }
   }
   .topbar {
     position: fixed !important;
-    top: var(--mp-safe-top) !important;
+    top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
