@@ -154,71 +154,34 @@ canvas { display: block; max-width: 100%; }
 
 
 
-/* Cabecera PWA móvil: la ventana iOS ya empieza debajo de la barra de estado.
-   Se reserva una sola fila de 48px; el fondo blanco continúa hasta el borde superior. */
+/* Cabecera PWA móvil v21: se oculta la barra superior vacía y se baja
+   la navegación de contexto por debajo del área de estado/efecto de iOS. */
+.user-menu { position: relative; }
+.user-avatar {
+  appearance: none; -webkit-appearance: none; border: 0; padding: 0;
+  cursor: pointer; font: 700 10px "DM Sans", sans-serif;
+}
+.user-avatar:focus-visible { outline: 2px solid #328060; outline-offset: 3px; }
+.user-menu-panel {
+  position: absolute; top: calc(100% + 9px); right: 0; z-index: 11000;
+  min-width: 174px; display: flex; flex-direction: column; align-items: stretch;
+  gap: 10px; padding: 13px; background: #fff; border: 1px solid #e5eaf1;
+  border-radius: 12px; box-shadow: 0 12px 32px #17243b20;
+}
+.user-menu-panel .status { justify-content: flex-start; font-size: 12px; }
+.user-menu-panel #logout-btn:not(.hidden) {
+  display: flex; width: 100%; justify-content: center; align-items: center;
+  min-height: 40px; padding: 9px 12px; border: 1px solid #e9edf4;
+  border-radius: 8px; background: #f7f9fc; color: #39445a;
+  font-size: 12px; white-space: nowrap;
+}
 @media (max-width: 700px) {
-  html, body {
-    background: #fff !important;
-  }
-  .shell {
-    padding-top: 48px !important;
-    background: #fff;
-  }
-  .topbar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    height: 48px !important;
-    min-height: 48px !important;
-    margin: 0 !important;
-    padding: 0 14px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    z-index: 10000 !important;
-    box-sizing: border-box !important;
-    background: #fff !important;
-    border-bottom: 1px solid #e9edf4 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    filter: none !important;
-    transform: none !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-  }
-  .topbar-right {
-    position: static !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: 12px !important;
-    min-height: 44px !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    filter: none !important;
-    transform: none !important;
-  }
-  #connection-state {
-    display: inline-flex !important;
-    align-items: center !important;
-    visibility: visible !important;
-    color: #59657a !important;
-    font-size: 12px !important;
-    white-space: nowrap !important;
-  }
-  #logout-btn:not(.hidden) {
-    display: inline-flex !important;
-    visibility: visible !important;
-    color: #59657a !important;
-    font-size: 12px !important;
-    padding: 8px 4px !important;
-    white-space: nowrap !important;
-  }
-  .dashboard-layout {
-    display: block !important;
-    min-height: calc(100dvh - 48px) !important;
-    background: #f5f7fb !important;
-  }
+  .shell { padding-top: 76px !important; background: #fff; }
+  .topbar { display: none !important; }
+  .dashboard-layout { display: block !important; min-height: calc(100dvh - 76px) !important; }
+  .dashboard-main { padding-top: 0 !important; }
+  .dashboard-topline { margin-top: 0 !important; height: 46px; margin-bottom: 18px; }
+  .topline-actions { gap: 7px; }
+  .user-avatar { width: 34px; height: 34px; }
+  .user-menu-panel { top: calc(100% + 8px); min-width: 180px; }
 }
