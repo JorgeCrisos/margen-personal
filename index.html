@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <meta name="description" content="Panel privado de finanzas personales">
   <title>Margen Personal · Finanzas</title>
-  <link rel="stylesheet" href="./styles.css?v=20">
+  <link rel="stylesheet" href="./styles.css?v=21">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -84,7 +84,7 @@
       <div class="dashboard-main">
         <div class="dashboard-topline" id="dashboard-top">
           <div class="breadcrumb">Mi espacio <span>/</span> <strong>Resumen general</strong></div>
-          <div class="topline-actions"><span class="date-chip" id="dashboard-date">Resumen financiero</span><span class="user-avatar">TÚ</span></div>
+          <div class="topline-actions"><span class="date-chip" id="dashboard-date">Resumen financiero</span><div class="user-menu"><button id="user-menu-toggle" class="user-avatar" type="button" aria-label="Abrir menú de usuario" aria-haspopup="true" aria-expanded="false">TÚ</button><div id="user-menu-panel" class="user-menu-panel hidden"><span id="connection-state-menu" class="status connected"><i></i> Conectado</span><button id="logout-btn" class="button button-quiet hidden" type="button">Cerrar sesión</button></div></div></div>
         </div>
         <div class="welcome-row">
           <div><span class="eyebrow" id="today-label">TU RESUMEN</span><h1>Tu patrimonio, <em>en perspectiva.</em></h1><p class="muted">Bancos, inversiones y movimientos, en una única visión financiera.</p></div>
