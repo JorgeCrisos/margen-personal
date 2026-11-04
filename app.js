@@ -350,7 +350,7 @@ function openTradeDialog(historical=false){
   $("trade-type").disabled=historical;
   if(historical)$("trade-type").value="buy";
   $("trade-post-cash").closest("label").hidden=historical;
-  $("trade-bank").closest("label").hidden=historical;
+  document.querySelector('label[for="trade-bank"]').hidden=historical;
   $("trade-bank").required=!historical;
   populatePositionSelects();$("trade-dialog").showModal();
 }
@@ -374,7 +374,7 @@ $("trade-form").addEventListener("submit",async e=>{
       :await supabase.rpc("record_investment_trade",{p_position_id:p.id,p_bank_account_id:postCash?bankId:null,p_trade_type:type,p_quantity:qty,p_price_eur:price,p_fees_eur:fees,p_trade_date:date,p_post_cash:postCash});
     if(result.error)throw result.error;
     $("trade-dialog").close();$("trade-dialog").dataset.historical="false";$("trade-type").disabled=false;
-    $("trade-post-cash").closest("label").hidden=false;$("trade-bank").closest("label").hidden=false;
+    $("trade-post-cash").closest("label").hidden=false;document.querySelector('label[for="trade-bank"]').hidden=false;
     await loadTransactions();await loadWealth();
     toast(historical?"Aportación histórica registrada":type==="buy"?"Compra registrada":"Venta registrada");
   }catch(err){$("trade-error").textContent=err.message||"No se pudo guardar la operación; no se han aplicado cambios parciales.";console.error(err)}
