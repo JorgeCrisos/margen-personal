@@ -9,7 +9,7 @@ const BANK_BALANCE_CUTOFF = "2026-11-01";
 let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], investmentCash = [], wealthSnapshots = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, wealthHistoryChart = null, toastTimer = null;
 
 function setStatus(text, connected=false) { const markup = "<i></i>" + text; const top = $("connection-state"); if(top){top.innerHTML=markup;top.classList.toggle("connected",connected);} const menu=$("connection-state-menu"); if(menu){menu.innerHTML=markup;menu.classList.toggle("connected",connected);} }
-function show(id, yes=true) { $(id).classList.toggle("hidden", !yes); }
+function show(id, yes=true) { const el=$(id); if(!el)return; el.classList.toggle("hidden", !yes); el.style.display=yes?"":"none"; }
 function escapeHtml(value="") { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function localDate(date=new Date()) { const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0"); return `${y}-${m}-${d}`; }
 function selectedMonth() { return $("month-filter").value; }
@@ -359,12 +359,41 @@ $("export-btn").addEventListener("click",exportExcel);
 $("all-periods").addEventListener("click",()=>{$("month-filter").value="";render();});
 
 async function enterApp(currentUser) {
-  user=currentUser; show("auth-view",false);show("app-view",true);show("logout-btn",true);setStatus("Conectado",true);
+  user=currentUser;
+  // Mantiene las dos vistas mutuamente excluyentes incluso si hay CSS/PWA antiguo en caché.
+  show("auth-view",false);
+  show("app-view",true);
+  show("app-load-error",false);
+  show("logout-btn",true);
+  setStatus("Conectado",true);
   $("today-label").textContent=new Date().toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
   if(!$("month-filter").value)$("month-filter").value=localDate().slice(0,7);
-  try { await loadTransactions(); await loadWealth(); } catch(e){console.error(e);toast("Error al cargar datos. Ejecuta el SQL actualizado y revisa las políticas RLS.");}
+  try {
+    await loadTransactions();
+    await loadWealth();
+  } catch(e) {
+    console.error("Error cargando los datos del usuario:",e);
+    const panel=$("app-load-error");
+    if(panel) {
+      panel.textContent="Has iniciado sesión, pero no se han podido cargar tus datos. No se ha borrado nada. Detalle: "+(e?.message||"error desconocido")+". Comprueba la migración SQL y las políticas RLS de Supabase.";
+      show("app-load-error",true);
+    } else {
+      toast("Sesión iniciada, pero ha fallado la carga de datos. No se ha borrado nada.");
+    }
+  }
 }
-async function exitApp() { if(typeof closeUserMenu==="function")closeUserMenu(); user=null;rows=[];if(trendChart)trendChart.destroy();if(categoryChart)categoryChart.destroy();if(wealthHistoryChart)wealthHistoryChart.destroy();show("app-view",false);show("auth-view",true);show("logout-btn",false);setStatus("Sin sesión"); }
+async function exitApp() {
+  if(typeof closeUserMenu==="function")closeUserMenu();
+  user=null;rows=[];
+  if(trendChart)trendChart.destroy();
+  if(categoryChart)categoryChart.destroy();
+  if(wealthHistoryChart)wealthHistoryChart.destroy();
+  show("app-view",false);
+  show("auth-view",true);
+  show("app-load-error",false);
+  show("logout-btn",false);
+  setStatus("Sin sesión");
+}
 $("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -416,6 +445,8 @@ $("auth-form").addEventListener("submit", async (e) => {
 
   } catch (error) {
     console.error("Error de inicio de sesión:", error);
+    show("app-view",false);
+    show("auth-view",true);
     message.textContent = error?.message || (mode === "signup"
       ? "No se ha podido crear la cuenta."
       : "No se ha podido iniciar sesión.");
@@ -463,6 +494,8 @@ $("month-filter").value=localDate().slice(0,7);
 populateCategories("expense","tx-category");
 async function bootstrap(){
   show("auth-view",true);
+  show("app-view",false);
+  show("app-load-error",false);
   setStatus("Iniciando…");
   try {
     const config = await import("./config.js");
