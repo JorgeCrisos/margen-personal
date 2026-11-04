@@ -208,3 +208,24 @@ canvas { display: block; max-width: 100%; }
 html { min-height: 100%; }
 body { min-height: 100svh; }
 @supports (min-height: 100dvh) { body { min-height: 100dvh; } }
+
+
+/* v39 — Pantalla de acceso estable en Safari iOS/PWA. */
+@media (max-width: 700px) {
+  body:has(#auth-view:not([hidden])) {
+    min-height: 100%;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+  body:has(#auth-view:not([hidden])) .shell {
+    min-height: 0;
+    padding-top: max(18px, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 18px;
+  }
+  body:has(#auth-view:not([hidden])) .auth-layout {
+    min-height: 0 !important;
+    height: auto !important;
+    align-content: start;
+    padding: 18px 0 24px !important;
+    gap: 22px !important;
+  }
+}
