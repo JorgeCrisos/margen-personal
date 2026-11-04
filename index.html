@@ -45,7 +45,7 @@
         <input id="auth-email" type="email" autocomplete="email" placeholder="tu@email.com" required>
         <label for="auth-password">Contraseña</label>
         <input id="auth-password" type="password" autocomplete="current-password" minlength="8" placeholder="Mínimo 8 caracteres" required>
-        <button id="auth-submit" class="button button-primary full" type="button" onclick="document.getElementById('auth-message').textContent='El módulo de acceso no ha respondido. Recarga esta página.'">Entrar a mi espacio</button>
+        <button id="auth-submit" class="button button-primary full" type="button" onclick="if(window.margenLogin){window.margenLogin()}else{document.getElementById('auth-message').textContent='La aplicación no ha terminado de cargar. Recarga la página.'}">Entrar a mi espacio</button>
         <p id="auth-message" class="form-message" role="status"></p>
         <p class="fineprint">Usa una contraseña única. Si activas confirmación por correo en Supabase, tendrás que verificar tu dirección antes de entrar.</p>
       </form>
@@ -173,6 +173,6 @@
     </form>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js?v=35"></script><script type="module" src="./advanced.js?v=24"></script>
+  <script type="module" src="./app.js?v=36"></script><script type="module" src="./advanced.js?v=24"></script>
 </body>
 </html>
