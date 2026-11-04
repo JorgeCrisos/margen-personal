@@ -7,6 +7,8 @@ const palette = ["#3d8058","#d7a64b","#6b8eae","#c97b65","#9c88bd","#75aaa1","#d
 const currency = new Intl.NumberFormat("es-ES", {style:"currency",currency:"EUR"});
 const BANK_BALANCE_CUTOFF = "2026-11-01";
 let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], investmentCash = [], wealthSnapshots = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, wealthHistoryChart = null, toastTimer = null;
+// Vincula el submit inmediatamente, antes del resto de inicialización de la app.
+$("auth-form")?.addEventListener("submit", handleAuthSubmit);
 
 function setStatus(text, connected=false) { const markup = "<i></i>" + text; const top = $("connection-state"); if(top){top.innerHTML=markup;top.classList.toggle("connected",connected);} const menu=$("connection-state-menu"); if(menu){menu.innerHTML=markup;menu.classList.toggle("connected",connected);} }
 function show(id, yes=true) { const el=$(id); if(!el)return; el.hidden=!yes; el.inert=!yes; el.setAttribute("aria-hidden",String(!yes)); el.classList.toggle("hidden", !yes); if(yes) el.style.removeProperty("display"); else el.style.setProperty("display","none","important"); }
@@ -395,7 +397,7 @@ async function exitApp() {
   show("logout-btn",false);
   setStatus("Sin sesión");
 }
-$("auth-form").addEventListener("submit", async (e) => {
+async function handleAuthSubmit(e) {
   e.preventDefault();
 
   const button = $("auth-submit");
@@ -458,7 +460,7 @@ $("auth-form").addEventListener("submit", async (e) => {
       ? "Entrar a mi espacio"
       : "Crear cuenta";
   }
-});
+}
 function closeUserMenu(){
   const panel=$("user-menu-panel");
   if(!panel)return;
