@@ -34,7 +34,7 @@
         <p>Una vista sencilla de tus ingresos, tus gastos y lo que consigues guardar cada mes.</p>
         <div class="auth-points"><span>✓ Datos privados por usuario</span><span>✓ Exportación a Excel</span><span>✓ Acceso desde varios dispositivos</span></div>
       </div>
-      <form id="auth-form" class="panel auth-card" onsubmit="event.preventDefault(); document.getElementById('auth-message').textContent='Procesando inicio de sesión…'; return false;">
+      <form id="auth-form" class="panel auth-card" novalidate>
         <div class="auth-tabs">
           <button type="button" class="auth-tab active" data-mode="login">Iniciar sesión</button>
           <button type="button" class="auth-tab" data-mode="signup">Crear cuenta</button>
@@ -45,7 +45,7 @@
         <input id="auth-email" type="email" autocomplete="email" placeholder="tu@email.com" required>
         <label for="auth-password">Contraseña</label>
         <input id="auth-password" type="password" autocomplete="current-password" minlength="8" placeholder="Mínimo 8 caracteres" required>
-        <button id="auth-submit" class="button button-primary full" type="submit">Entrar a mi espacio</button>
+        <button id="auth-submit" class="button button-primary full" type="button" onclick="document.getElementById('auth-message').textContent='El módulo de acceso no ha respondido. Recarga esta página.'">Entrar a mi espacio</button>
         <p id="auth-message" class="form-message" role="status"></p>
         <p class="fineprint">Usa una contraseña única. Si activas confirmación por correo en Supabase, tendrás que verificar tu dirección antes de entrar.</p>
       </form>
@@ -173,6 +173,6 @@
     </form>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js?v=34"></script><script type="module" src="./advanced.js?v=24"></script>
+  <script type="module" src="./app.js?v=35"></script><script type="module" src="./advanced.js?v=24"></script>
 </body>
 </html>
