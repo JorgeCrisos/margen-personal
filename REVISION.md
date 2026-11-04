@@ -50,3 +50,12 @@ No se ha podido iniciar sesión contra tu proyecto Supabase ni ejecutar operacio
 - Se elimina el listener duplicado del botón y se sincronizan app.js, index.html y service worker a v36.
 - No se modifican datos, credenciales, tablas ni configuración de Supabase.
 - Pendiente: prueba real de inicio de sesión en Safari/iPhone y verificación de lectura de datos.
+
+
+## Corrección de orden de inicialización del acceso — 4 de noviembre de 2026 (v37)
+
+- La captura del usuario confirmó que el HTML se publicaba, pero `window.margenLogin` no estaba definido al pulsar el botón.
+- Se adelanta la definición global del controlador de acceso al inicio de `app.js`, inmediatamente después de las declaraciones de estado y antes de registrar los demás eventos de interfaz. Así, un error posterior en la inicialización de otro componente no deja el botón sin controlador.
+- Se actualizan la referencia del módulo y la caché PWA a v37.
+- No se modifican datos, credenciales, esquema ni configuración de Supabase.
+- Pendiente: prueba real del login y lectura de los datos del usuario.
