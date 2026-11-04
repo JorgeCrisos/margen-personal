@@ -229,3 +229,62 @@ body { min-height: 100svh; }
     gap: 22px !important;
   }
 }
+
+
+/* v40 — Reparación táctil del formulario de acceso en iPhone.
+   Neutraliza reglas móviles heredadas de scroll/viewport y evita que capas decorativas
+   o contextos de apilamiento puedan interceptar el toque en los campos. */
+@media (max-width: 700px) {
+  html:has(#auth-view:not([hidden])) {
+    scroll-behavior: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: auto;
+  }
+  body:has(#auth-view:not([hidden])) {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 0 env(safe-area-inset-bottom, 0px) !important;
+    overflow-x: hidden;
+  }
+  body:has(#auth-view:not([hidden])) .shell {
+    position: relative !important;
+    z-index: 1 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: max(18px, env(safe-area-inset-top, 0px)) 0 18px !important;
+    pointer-events: auto !important;
+  }
+  #auth-view:not([hidden]) {
+    position: relative !important;
+    z-index: 100 !important;
+    display: grid !important;
+    min-height: 0 !important;
+    height: auto !important;
+    pointer-events: auto !important;
+    touch-action: pan-y;
+  }
+  #auth-view:not([hidden]) .auth-card,
+  #auth-view:not([hidden]) .auth-card * {
+    pointer-events: auto !important;
+  }
+  #auth-view:not([hidden]) .auth-card {
+    position: relative !important;
+    z-index: 101 !important;
+    isolation: isolate;
+  }
+  #auth-view:not([hidden]) .auth-card input {
+    position: relative !important;
+    z-index: 102 !important;
+    display: block;
+    width: 100%;
+    min-height: 52px;
+    font-size: 16px !important;
+    line-height: 1.35;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
