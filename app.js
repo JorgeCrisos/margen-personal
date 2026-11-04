@@ -7,17 +7,7 @@ const palette = ["#3d8058","#d7a64b","#6b8eae","#c97b65","#9c88bd","#75aaa1","#d
 const currency = new Intl.NumberFormat("es-ES", {style:"currency",currency:"EUR"});
 const BANK_BALANCE_CUTOFF = "2026-11-01";
 let supabase = null, user = null, rows = [], banks = [], positions = [], trades = [], dividends = [], investmentCash = [], wealthSnapshots = [], mode = "login", txType = "expense", editId = null, trendChart = null, categoryChart = null, wealthChart = null, wealthHistoryChart = null, toastTimer = null;
-// El acceso se inicia desde el botón, no desde el submit nativo del formulario.
-// Así evitamos que Safari/PWA recargue o intercepte el envío antes de Supabase.
-$("auth-submit")?.addEventListener("click", () => {
-  const form = $("auth-form");
-  const message = $("auth-message");
-  if (!form.reportValidity()) {
-    message.textContent = "Revisa el correo y la contraseña antes de continuar.";
-    return;
-  }
-  void handleAuthSubmit();
-});
+// El botón invoca explícitamente esta función global desde index.html.
 
 function setStatus(text, connected=false) { const markup = "<i></i>" + text; const top = $("connection-state"); if(top){top.innerHTML=markup;top.classList.toggle("connected",connected);} const menu=$("connection-state-menu"); if(menu){menu.innerHTML=markup;menu.classList.toggle("connected",connected);} }
 function show(id, yes=true) { const el=$(id); if(!el)return; el.hidden=!yes; el.inert=!yes; el.setAttribute("aria-hidden",String(!yes)); el.classList.toggle("hidden", !yes); if(yes) el.style.removeProperty("display"); else el.style.setProperty("display","none","important"); }
@@ -406,6 +396,16 @@ async function exitApp() {
   show("logout-btn",false);
   setStatus("Sin sesión");
 }
+window.margenLogin = () => {
+  const form = $("auth-form");
+  const message = $("auth-message");
+  if (!form.reportValidity()) {
+    message.textContent = "Revisa el correo y la contraseña antes de continuar.";
+    return;
+  }
+  void handleAuthSubmit();
+};
+
 async function handleAuthSubmit() {
 
   const button = $("auth-submit");
