@@ -59,3 +59,12 @@ No se ha podido iniciar sesión contra tu proyecto Supabase ni ejecutar operacio
 - Se actualizan la referencia del módulo y la caché PWA a v37.
 - No se modifican datos, credenciales, esquema ni configuración de Supabase.
 - Pendiente: prueba real del login y lectura de los datos del usuario.
+
+
+## Corrección de carga del script principal — 4 de noviembre de 2026 (v38)
+
+- La captura del usuario muestra el mensaje de fallback del HTML, lo que demuestra que `window.margenLogin` no estaba disponible al pulsar el botón; no es un error de contraseña.
+- Se cambia la carga de `app.js` de `type="module"` a script clásico con `defer`. El archivo no contiene importaciones estáticas; utiliza `import()` dinámico, compatible con scripts clásicos en navegadores modernos. Esto elimina la dependencia de la carga del módulo principal para registrar el controlador global del login.
+- Se sincronizan las referencias de `app.js` y el service worker a v38, y se renueva el nombre de caché para invalidar el shell previo.
+- No se modifica `config.js`, Supabase, SQL, cuentas ni datos financieros.
+- Pendiente de verificación: carga real en Safari/iOS, autenticación y lectura de los datos del usuario.
