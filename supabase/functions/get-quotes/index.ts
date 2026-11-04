@@ -44,13 +44,13 @@ async function yahooChart(symbol:string){
   if(!timestamp||!Number.isFinite(timestamp))throw new Error("Yahoo Finance no ha indicado la fecha del precio");
   const age=(Date.now()/1000-timestamp)/86400;
   if(age>7||age< -0.25)throw new Error("Cotización de Yahoo Finance antigua o con fecha no válida");
-  return {symbol:String(meta.symbol||symbol).toUpperCase(),price,currency:String(meta.currency||"").toUpperCase(),timestamp,exchange:String(meta.exchangeName||meta.fullExchangeName||"") ,name:String(meta.longName||meta.shortName||""),type:String(meta.instrumentType||"")};
+  return {symbol:String(meta.symbol||symbol).toUpperCase(),price,currency:String(meta.currency||""),timestamp,exchange:String(meta.exchangeName||meta.fullExchangeName||"") ,name:String(meta.longName||meta.shortName||""),type:String(meta.instrumentType||"")};
 }
 const fxCache=new Map<string,number>();
 async function yahooToEur(price:number,currency:string){
-  let c=currency.toUpperCase(),value=price;
+  const raw=String(currency||"");let c=raw.toUpperCase(),value=price;
   if(c==="EUR")return value;
-  if(c==="GBX"||c==="GBp".toUpperCase()){value/=100;c="GBP";}
+  if(raw==="GBp"||c==="GBX"){value/=100;c="GBP";}
   const cached=fxCache.get(c);if(cached)return value*cached;
   const fx=await yahooChart("EUR"+c+"=X");
   if(fx.currency!==c||fx.price<=0)throw new Error("No se ha podido validar el cambio EUR/"+c+" en Yahoo Finance");
