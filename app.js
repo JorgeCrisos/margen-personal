@@ -531,7 +531,7 @@ bootstrap();
 // Registra la PWA para permitir instalación y actualización controlada del shell.
 if ("serviceWorker" in navigator && window.location.protocol === "https:") {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=32", { scope: "./", updateViaCache: "none" }).then(registration => registration.update())
+    navigator.serviceWorker.register("./sw.js?v=34", { scope: "./", updateViaCache: "none" }).then(registration => registration.update())
       .catch(error => console.warn("No se pudo registrar el service worker:", error));
   }, { once: true });
 }
