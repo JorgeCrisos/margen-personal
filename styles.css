@@ -192,3 +192,7 @@ canvas { display: block; max-width: 100%; }
   .user-avatar { width: 34px; height: 34px; }
   .user-menu-panel { top: calc(100% + 8px); min-width: 184px; }
 }
+
+
+/* Seguridad visual: las vistas privadas permanecen ocultas por atributo HTML, también en móvil. */
+#app-view[hidden], #auth-view[hidden] { display: none !important; }
