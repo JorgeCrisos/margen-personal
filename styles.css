@@ -196,3 +196,15 @@ canvas { display: block; max-width: 100%; }
 
 /* Seguridad visual: las vistas privadas permanecen ocultas por atributo HTML, también en móvil. */
 #app-view[hidden], #auth-view[hidden] { display: none !important; }
+
+
+/* Margen Personal v32: ocultación absoluta de contenido privado sin sesión. */
+[hidden], [inert] { display: none !important; }
+#app-view[hidden], #app-view[inert] { display: none !important; }
+
+/* iOS Safari/PWA: evita zoom automático y saltos de viewport al enfocar inputs. */
+.auth-card input { font-size: 16px !important; min-height: 52px; }
+.auth-card input:focus { scroll-margin-block: 24px; }
+html { min-height: 100%; }
+body { min-height: 100svh; }
+@supports (min-height: 100dvh) { body { min-height: 100dvh; } }
