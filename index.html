@@ -34,7 +34,7 @@
         <p>Una vista sencilla de tus ingresos, tus gastos y lo que consigues guardar cada mes.</p>
         <div class="auth-points"><span>✓ Datos privados por usuario</span><span>✓ Exportación a Excel</span><span>✓ Acceso desde varios dispositivos</span></div>
       </div>
-      <form id="auth-form" class="panel auth-card" onsubmit="event.preventDefault();">
+      <form id="auth-form" class="panel auth-card">
         <div class="auth-tabs">
           <button type="button" class="auth-tab active" data-mode="login">Iniciar sesión</button>
           <button type="button" class="auth-tab" data-mode="signup">Crear cuenta</button>
@@ -51,7 +51,7 @@
       </form>
     </section>
 
-    <section id="app-view" class="hidden dashboard-layout">
+    <section id="app-view" class="dashboard-layout" hidden>
       <aside class="sidebar">
         <a class="brand sidebar-brand" href="#" aria-label="Margen Personal inicio">
           <span class="brand-mark"><span></span><span></span><span></span></span>
@@ -173,6 +173,6 @@
     </form>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js?v=30"></script><script type="module" src="./advanced.js?v=24"></script>
+  <script type="module" src="./app.js?v=31"></script><script type="module" src="./advanced.js?v=24"></script>
 </body>
 </html>
