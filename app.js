@@ -324,7 +324,7 @@ async function refreshQuotes(){
     for(const q of quotes){
       const p=positions.find(x=>x.id===q.position_id);if(!p)continue;
       if(Number.isFinite(Number(q.price_eur))&&Number(q.price_eur)>0&&q.validated===true){
-        const patch={current_price_eur:Number(q.price_eur),quote_currency:q.currency,quote_updated_at:new Date().toISOString(),quote_provider:"Twelve Data",quote_datetime:q.datetime||null,quote_status:"ok",quote_error:null,provider_symbol:q.symbol||p.provider_symbol,mic_code:q.mic_code||p.mic_code,exchange:q.exchange||p.exchange};
+        const patch={current_price_eur:Number(q.price_eur),quote_currency:q.currency,quote_updated_at:new Date().toISOString(),quote_provider:q.provider||"Twelve Data",quote_datetime:q.datetime||null,quote_status:"ok",quote_error:null,provider_symbol:q.symbol||p.provider_symbol,mic_code:q.mic_code||p.mic_code,exchange:q.exchange||p.exchange};
         const {error:upErr}=await supabase.from("investment_positions").update(patch).eq("id",p.id);
         if(upErr){problems.push(p.ticker+": no se pudo guardar el precio");continue}updated++;
       }else{
