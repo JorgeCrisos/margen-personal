@@ -68,3 +68,12 @@ No se ha podido iniciar sesión contra tu proyecto Supabase ni ejecutar operacio
 - Se sincronizan las referencias de `app.js` y el service worker a v38, y se renueva el nombre de caché para invalidar el shell previo.
 - No se modifica `config.js`, Supabase, SQL, cuentas ni datos financieros.
 - Pendiente de verificación: carga real en Safari/iOS, autenticación y lectura de los datos del usuario.
+
+
+## Estabilización de pantalla de acceso en iOS — 4 de noviembre de 2026 (v39)
+
+- Se separa el layout de autenticación del viewport dinámico usado por el panel móvil.
+- En la vista de login se elimina la reserva inferior de navegación móvil, se evita la altura mínima basada en 100dvh y se fija un flujo vertical natural con padding seguro para iOS.
+- Se actualizan estilos a v30, app.js y service worker a v39; nueva caché PWA.
+- No se cambia autenticación, Supabase, configuración, esquema SQL ni datos.
+- Pendiente de confirmación visual en Safari/PWA iOS.
