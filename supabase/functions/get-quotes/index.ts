@@ -9,7 +9,9 @@ const KNOWN: Record<string,{isin:string;mic_code:string;exchange:string;symbol:s
   MSFT:{isin:"US5949181045",mic_code:"XNAS",exchange:"NASDAQ",symbol:"MSFT",yahoo:"MSFT",name:"Microsoft"},
   MWRE:{isin:"IE000BI8OT95",mic_code:"XETR",exchange:"Xetra",symbol:"MWRE",yahoo:"MWRE.DE",name:"Amundi Core MSCI World"},
   SXR8:{isin:"IE00B5BMR087",mic_code:"XETR",exchange:"Xetra",symbol:"SXR8",yahoo:"SXR8.DE",name:"iShares Core S&P 500"},
-  "3CP":{isin:"KYG9830T1067",mic_code:"XFRA",exchange:"Frankfurt",symbol:"3CP",yahoo:"3CP.F",name:"Xiaomi"}
+  "3CP":{isin:"KYG9830T1067",mic_code:"XFRA",exchange:"Frankfurt",symbol:"3CP",yahoo:"3CP.F",name:"Xiaomi"},
+  NKE:{isin:"US6541061031",mic_code:"XNYS",exchange:"NYSE",symbol:"NKE",yahoo:"NKE",name:"NIKE"},
+  QDVE:{isin:"IE00B3WJKG14",mic_code:"XETR",exchange:"Xetra",symbol:"QDVE",yahoo:"QDVE.DE",name:"iShares S&P 500 Information Technology Sector UCITS ETF"}
 };
 const num=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)?n:null;};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:cors});
