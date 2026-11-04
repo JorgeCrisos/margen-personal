@@ -41,3 +41,12 @@ No se ha podido iniciar sesión contra tu proyecto Supabase ni ejecutar operacio
 - Se ha sincronizado la versión del frontend y del service worker a v35.
 - No se modifica el esquema SQL, la autenticación almacenada, las cuentas ni los registros financieros.
 - Pendiente: confirmar un inicio de sesión real desde el dispositivo del usuario y comprobar la carga de sus datos. No se declara validado el flujo extremo a extremo hasta esa prueba.
+
+
+## Corrección explícita del botón de acceso — 4 de noviembre de 2026 (v36)
+
+- Se ha localizado un defecto concreto en v35: el atributo onclick del botón solo escribía un mensaje de diagnóstico; no invocaba el inicio de sesión. El acceso dependía exclusivamente de que el listener del módulo app.js se hubiera ejecutado.
+- v36 conecta el onclick directamente con una función global margenLogin definida por app.js. Si el módulo no carga, se muestra un mensaje de carga; si carga, se ejecuta validación y autenticación con Supabase.
+- Se elimina el listener duplicado del botón y se sincronizan app.js, index.html y service worker a v36.
+- No se modifican datos, credenciales, tablas ni configuración de Supabase.
+- Pendiente: prueba real de inicio de sesión en Safari/iPhone y verificación de lectura de datos.
