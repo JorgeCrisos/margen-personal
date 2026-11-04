@@ -31,3 +31,13 @@ No se ha podido iniciar sesión contra tu proyecto Supabase ni ejecutar operacio
 - Se añadió el registro del service worker y se incrementó la versión de caché.
 - Validaciones realizadas: `node --check app.js` sin errores; comprobación de IDs HTML sin duplicados.
 - Limitación: no se ha realizado una prueba visual real en Safari/iPhone ni un flujo autenticado contra Supabase.
+
+
+## Diagnóstico y corrección del acceso — 4 de noviembre de 2026
+
+- La publicación de GitHub Pages de la revisión anterior terminó correctamente; el problema no se debía únicamente a una publicación pendiente.
+- Se ha sustituido el envío nativo del formulario de acceso por una acción directa del botón. El botón valida los campos y llama al controlador de Supabase sin permitir un submit/recargo del formulario en Safari o en la PWA.
+- Se ha añadido un mensaje de diagnóstico visible si el JavaScript de la aplicación no llega a enlazar el botón.
+- Se ha sincronizado la versión del frontend y del service worker a v35.
+- No se modifica el esquema SQL, la autenticación almacenada, las cuentas ni los registros financieros.
+- Pendiente: confirmar un inicio de sesión real desde el dispositivo del usuario y comprobar la carga de sus datos. No se declara validado el flujo extremo a extremo hasta esa prueba.
