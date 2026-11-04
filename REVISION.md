@@ -77,3 +77,13 @@ No se ha podido iniciar sesión contra tu proyecto Supabase ni ejecutar operacio
 - Se actualizan estilos a v30, app.js y service worker a v39; nueva caché PWA.
 - No se cambia autenticación, Supabase, configuración, esquema SQL ni datos.
 - Pendiente de confirmación visual en Safari/PWA iOS.
+
+
+## Reparación de interacción táctil del login iOS — 4 de noviembre de 2026 (v40)
+
+- Se identificó que los estilos móviles acumulados mantenían reglas globales de viewport/scroll y que el ajuste v39 no anulaba todas las declaraciones previas con `!important`.
+- Se añade una capa explícita y aislada para el formulario de acceso móvil; campos con prioridad de apilamiento, pointer-events, touch-action y selección de texto explícitos.
+- En el estado de login se neutraliza el scroll suave y se restablece la altura natural del documento; se evita aplicar el espacio inferior de navegación del dashboard.
+- Se sincronizan CSS v31, app.js v40 y caché PWA v40.
+- Sin cambios de Supabase, credenciales, cuentas, SQL ni datos.
+- Pendiente: confirmación de interacción real con teclado iOS tras el despliegue.
