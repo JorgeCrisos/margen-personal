@@ -276,7 +276,7 @@ function openPositionDialog(p=null){
 function editPosition(id){const p=positions.find(x=>x.id===id);if(p)openPositionDialog(p)}
 async function savePosition(payload){
   if(!supabase||!user){$("asset-error").textContent="Tu sesión no está activa. Vuelve a iniciar sesión.";return false;}
-  if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<=0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, cantidad y coste medio.";return false;}
+  if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, cantidad y coste medio.";return false;}
   const {id,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};
   try {
     const {error}=await (id?supabase.from("investment_positions").update(body).eq("id",id):supabase.from("investment_positions").insert({...body,user_id:user.id,current_price_eur:null}));
@@ -341,9 +341,45 @@ async function refreshQuotes(){
 }
 $("refresh-quotes").addEventListener("click",refreshQuotes);
 
-$("add-trade").addEventListener("click",()=>{if(!positions.length)return;$("trade-form").reset();$("trade-date").value=localDate();$("trade-fees").value="0";$("trade-post-cash").checked=true;$("trade-error").textContent="";populatePositionSelects();$("trade-bank").required=true;$("trade-dialog").showModal()});
+function openTradeDialog(historical=false){
+  if(!positions.length)return;
+  $("trade-form").reset();$("trade-date").value=localDate();$("trade-fees").value="0";
+  $("trade-post-cash").checked=!historical;$("trade-error").textContent="";
+  $("trade-dialog").dataset.historical=historical?"true":"false";
+  $("trade-dialog").querySelector("h2").textContent=historical?"Registrar aportación histórica":"Registrar compra o venta";
+  $("trade-type").disabled=historical;
+  if(historical)$("trade-type").value="buy";
+  $("trade-post-cash").closest("label").hidden=historical;
+  $("trade-bank").closest("label").hidden=historical;
+  $("trade-bank").required=!historical;
+  populatePositionSelects();$("trade-dialog").showModal();
+}
+$("add-trade").addEventListener("click",()=>openTradeDialog(false));
+$("add-historical-trade").addEventListener("click",()=>openTradeDialog(true));
 $("trade-post-cash").addEventListener("change",()=>{$("trade-bank").required=$("trade-post-cash").checked;});
-$("trade-form").addEventListener("submit",async e=>{e.preventDefault();const p=positions.find(x=>x.id===$("trade-position").value),type=$("trade-type").value,qty=Number($("trade-quantity").value),price=Number($("trade-price").value),fees=Number($("trade-fees").value),date=$("trade-date").value,postCash=$("trade-post-cash").checked,bankId=$("trade-bank").value;if(!p||!["buy","sell"].includes(type)||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<=0||!Number.isFinite(fees)||fees<0||!date){$("trade-error").textContent="Revisa los datos de la operación.";return}if(date<BANK_BALANCE_CUTOFF){$("trade-error").textContent="Registra operaciones nuevas desde el 01/11/2026 para no alterar saldos iniciales.";return}if(postCash&&!bankId){$("trade-error").textContent="Selecciona la cuenta bancaria o desmarca el registro del efectivo si ya está incluido.";return}const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;submit.textContent="Guardando…";try{const {error}=await supabase.rpc("record_investment_trade",{p_position_id:p.id,p_bank_account_id:postCash?bankId:null,p_trade_type:type,p_quantity:qty,p_price_eur:price,p_fees_eur:fees,p_trade_date:date,p_post_cash:postCash});if(error)throw error;$("trade-dialog").close();await loadTransactions();await loadWealth();toast(type==="buy"?"Compra registrada":"Venta registrada");}catch(err){$("trade-error").textContent=err.message||"No se pudo guardar la operación; no se han aplicado cambios parciales.";console.error(err)}finally{submit.disabled=false;submit.textContent="Guardar operación"}});
+$("trade-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const historical=$("trade-dialog").dataset.historical==="true";
+  const p=positions.find(x=>x.id===$("trade-position").value),type=historical?"buy":$("trade-type").value;
+  const qty=Number($("trade-quantity").value),price=Number($("trade-price").value),fees=Number($("trade-fees").value);
+  const date=$("trade-date").value,postCash=!historical&&$("trade-post-cash").checked,bankId=postCash?$("trade-bank").value:null;
+  if(!p||!["buy","sell"].includes(type)||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<=0||!Number.isFinite(fees)||fees<0||!date){$("trade-error").textContent="Revisa los datos de la operación.";return}
+  if(historical&&date>=BANK_BALANCE_CUTOFF){$("trade-error").textContent="Esta opción es para compras anteriores al 01/11/2026. Usa Compra / venta para operaciones actuales.";return}
+  if(!historical&&date<BANK_BALANCE_CUTOFF){$("trade-error").textContent="Para compras anteriores al 01/11/2026 utiliza Aportación histórica.";return}
+  if(postCash&&!bankId){$("trade-error").textContent="Selecciona la cuenta bancaria o desmarca el registro del efectivo si ya está incluido.";return}
+  const submit=e.currentTarget.querySelector('button[type="submit"]');submit.disabled=true;submit.textContent="Guardando…";
+  try{
+    const result=historical
+      ?await supabase.rpc("record_historical_investment_buy",{p_position_id:p.id,p_quantity:qty,p_price_eur:price,p_fees_eur:fees,p_trade_date:date})
+      :await supabase.rpc("record_investment_trade",{p_position_id:p.id,p_bank_account_id:postCash?bankId:null,p_trade_type:type,p_quantity:qty,p_price_eur:price,p_fees_eur:fees,p_trade_date:date,p_post_cash:postCash});
+    if(result.error)throw result.error;
+    $("trade-dialog").close();$("trade-dialog").dataset.historical="false";$("trade-type").disabled=false;
+    $("trade-post-cash").closest("label").hidden=false;$("trade-bank").closest("label").hidden=false;
+    await loadTransactions();await loadWealth();
+    toast(historical?"Aportación histórica registrada":type==="buy"?"Compra registrada":"Venta registrada");
+  }catch(err){$("trade-error").textContent=err.message||"No se pudo guardar la operación; no se han aplicado cambios parciales.";console.error(err)}
+  finally{submit.disabled=false;submit.textContent="Guardar operación"}
+});
 $("add-dividend").addEventListener("click",()=>{if(!positions.length)return;$("dividend-form").reset();$("dividend-date").value=localDate();$("dividend-tax").value="0";$("dividend-net").value="0";$("dividend-post-cash").checked=true;$("dividend-error").textContent="";populatePositionSelects();$("dividend-bank").required=true;$("dividend-dialog").showModal()});
 $("dividend-post-cash").addEventListener("change",()=>{$("dividend-bank").required=$("dividend-post-cash").checked;});
 $("dividend-gross").addEventListener("input",()=>{$("dividend-net").value=Math.max(0,Number($("dividend-gross").value||0)-Number($("dividend-tax").value||0)).toFixed(2)});$("dividend-tax").addEventListener("input",()=>{$("dividend-net").value=Math.max(0,Number($("dividend-gross").value||0)-Number($("dividend-tax").value||0)).toFixed(2)});
