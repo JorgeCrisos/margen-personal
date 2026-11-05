@@ -188,7 +188,8 @@ function renderWealth(){
   const itbody=$("investments-body");itbody.replaceChildren();show("investments-empty",positions.length===0);positions.forEach(p=>{const value=positionValue(p),cost=Number(p.quantity||0)*Number(p.average_cost_eur||0),gain=value-cost,ret=cost>0?gain/cost*100:0;const tr=document.createElement("tr");tr.innerHTML=`<td><div class="movement-cell"><span class="movement-icon">${p.asset_type==="etf"?"◫":"↗"}</span><div><div class="movement-title">${escapeHtml(p.name)}</div><div class="movement-subtitle">${escapeHtml(p.ticker.toUpperCase())}${p.exchange?" · "+escapeHtml(p.exchange):""}${p.quote_provider?" · "+escapeHtml(p.quote_provider):""}${p.quote_status==="error"?" · "+escapeHtml(p.quote_error||"Cotización pendiente"):""}</div></div></div></td><td><span class="category-pill">${assetTypes[p.asset_type]||"Otro"}</span></td><td>${Number(p.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${p.current_price_eur==null?"—":eur(p.current_price_eur)}</td><td class="align-right amount">${p.current_price_eur==null?"—":eur(value)}</td><td class="align-right"><span class="amount ${p.current_price_eur==null?"":gain>=0?"income":"expense"}">${p.current_price_eur==null?"Pendiente":`${gain>=0?"+":"−"}${eur(Math.abs(gain))} (${pct(ret)})`}</span></td><td class="align-right"><button class="row-action" data-position-add="${p.id}" title="Añadir otra aportación o compra">＋</button><button class="row-action" data-position-edit="${p.id}" title="Editar">✎</button><button class="row-action" data-position-delete="${p.id}" title="Eliminar">×</button></td>`;itbody.append(tr)});
   itbody.querySelectorAll("[data-position-add]").forEach(btn=>btn.addEventListener("click",()=>openTradeDialog(false,btn.dataset.positionAdd)));
   itbody.querySelectorAll("[data-position-edit]").forEach(btn=>btn.addEventListener("click",()=>editPosition(btn.dataset.positionEdit)));itbody.querySelectorAll("[data-position-delete]").forEach(btn=>btn.addEventListener("click",()=>deletePosition(btn.dataset.positionDelete)));
-  const tradeBody=$("trades-body");tradeBody.replaceChildren();show("trades-empty",trades.length===0);trades.slice(0,12).forEach(t=>{const p=positions.find(x=>x.id===t.position_id);const tr=document.createElement("tr");tr.innerHTML=`<td>${new Date(t.trade_date+"T12:00:00").toLocaleDateString("es-ES")}</td><td>${escapeHtml(p?.name||t.asset_name||"Activo eliminado")}</td><td><span class="category-pill">${tradeTypes[t.trade_type]||t.trade_type}</span></td><td>${Number(t.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${eur(t.price_eur)}</td><td class="align-right amount ${(Number(t.realized_pnl_eur||0)>=0)?"income":"expense"}">${t.trade_type==="sell"?`${Number(t.realized_pnl_eur)>=0?"+":"−"}${eur(Math.abs(Number(t.realized_pnl_eur||0)))}`:"—"}</td>`;tradeBody.append(tr)});
+  const tradeBody=$("trades-body");tradeBody.replaceChildren();show("trades-empty",trades.length===0);trades.slice(0,12).forEach(t=>{const p=positions.find(x=>x.id===t.position_id);const tr=document.createElement("tr");tr.innerHTML=`<td>${new Date(t.trade_date+"T12:00:00").toLocaleDateString("es-ES")}</td><td>${escapeHtml(p?.name||t.asset_name||"Activo eliminado")}</td><td><span class="category-pill">${tradeTypes[t.trade_type]||t.trade_type}</span></td><td>${Number(t.quantity).toLocaleString("es-ES",{maximumFractionDigits:6})}</td><td class="align-right">${eur(t.price_eur)}</td><td class="align-right amount ${(Number(t.realized_pnl_eur||0)>=0)?"income":"expense"}">${t.trade_type==="sell"?`${Number(t.realized_pnl_eur)>=0?"+":"−"}${eur(Math.abs(Number(t.realized_pnl_eur||0)))}`:"—"}</td><td class="align-right"><button class="row-action" data-trade-delete="${t.id}" title="Eliminar operación" aria-label="Eliminar operación">×</button></td>`;tradeBody.append(tr)});
+  tradeBody.querySelectorAll("[data-trade-delete]").forEach(btn=>btn.addEventListener("click",()=>deleteTrade(btn.dataset.tradeDelete)));
   const db=$("dividend-list");db.replaceChildren();if(!dividends.length)db.innerHTML='<p class="muted">Todavía no hay dividendos registrados.</p>';dividends.slice(0,4).forEach(d=>{const p=positions.find(x=>x.id===d.position_id);const div=document.createElement("div");div.className="dividend-row";div.innerHTML=`<div><strong>${escapeHtml(p?.name||d.asset_name||"Dividendo")}</strong><span>${new Date(d.payment_date+"T12:00:00").toLocaleDateString("es-ES")}</span></div><strong>${eur(d.net_amount_eur)}</strong>`;db.append(div)});
   const legend=$("wealth-legend");legend.replaceChildren();const alloc=[{name:"Bancos y efectivo",value:bankTotal,color:"#398665"},{name:"Acciones",value:stock,color:"#6384c6"},{name:"ETF y fondos",value:etf,color:"#d7a64b"},{name:"Otros activos",value:positions.filter(p=>!["stock","etf","fund"].includes(p.asset_type)).reduce((s,p)=>s+positionValue(p),0),color:"#c97b65"}].filter(x=>x.value>0);
   alloc.forEach(a=>{const el=document.createElement("div");el.className="wealth-legend-item";el.innerHTML=`<span class="legend-dot" style="background:${a.color}"></span><span>${a.name}</span><strong>${pct(share(a.value,total))}</strong>`;legend.append(el)});
@@ -278,8 +279,15 @@ function editPosition(id){const p=positions.find(x=>x.id===id);if(p)openPosition
 async function savePosition(payload){
   if(!supabase||!user){$("asset-error").textContent="Tu sesión no está activa. Vuelve a iniciar sesión.";return false;}
   if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, cantidad y coste medio.";return false;}
-  const {id,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};
+  let {id,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};
   try {
+    if(!id){
+      let lookup=supabase.from("investment_positions").select("id,name,ticker,mic_code").eq("ticker",fields.ticker);
+      lookup=fields.mic_code?lookup.eq("mic_code",fields.mic_code):lookup.is("mic_code",null);
+      const {data:existing,error:lookupError}=await lookup.maybeSingle();
+      if(lookupError)throw lookupError;
+      if(existing){id=existing.id;toast("Ese activo ya estaba en tu cartera: se actualizará la posición existente.");}
+    }
     const {error}=await (id?supabase.from("investment_positions").update(body).eq("id",id):supabase.from("investment_positions").insert({...body,user_id:user.id,current_price_eur:null}));
     if(error) throw error;
     await loadWealth();toast("Activo guardado");return true;
@@ -290,6 +298,13 @@ async function savePosition(payload){
   }
 }
 async function deletePosition(id){if(!confirm("Eliminar este activo también puede afectar a la vista de su historial. ¿Continuar?"))return;const {error}=await supabase.from("investment_positions").delete().eq("id",id);if(error){toast("No se ha podido eliminar el activo");return}await loadWealth()}
+async function deleteTrade(id){
+  const trade=trades.find(t=>t.id===id);if(!trade)return;
+  if(!confirm("¿Eliminar esta operación? Solo se permite borrar la operación más reciente de ese activo para poder revertir correctamente títulos, coste medio y efectivo bancario."))return;
+  const {error}=await supabase.rpc("delete_latest_investment_trade",{p_trade_id:id});
+  if(error){toast(error.message||"No se pudo eliminar la operación.");console.error(error);return;}
+  await loadTransactions();await loadWealth();toast("Operación eliminada y cartera actualizada");
+}
 $("add-position").addEventListener("click",()=>openPositionDialog());
 $("position-form").addEventListener("submit",async e=>{
   e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]'),oldText=submit.textContent;submit.disabled=true;submit.textContent="Guardando…";$("asset-error").textContent="";
