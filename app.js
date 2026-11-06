@@ -273,13 +273,21 @@ function openPositionDialog(p=null){
   $("asset-name").value=p?.name||"";$("asset-ticker").value=p?.ticker||"";$("asset-type").value=p?.asset_type||"stock";
   $("asset-isin").value=p?.isin||"";$("asset-mic").value=p?.mic_code||"";$("asset-exchange").value=p?.exchange||"";$("asset-provider-symbol").value=p?.provider_symbol||"";
   $("asset-quantity").value=p?.quantity??"";$("asset-cost").value=p?.average_cost_eur??"";
+  const isManual=p?.quote_provider==="Manual (valor liquidativo)"||p?.quote_status==="manual";
+  $("asset-manual-price").value=isManual&&p?.current_price_eur!=null?p.current_price_eur:"";
+  $("asset-manual-date").value=isManual&&p?.quote_datetime?p.quote_datetime:"";
   $("position-dialog").showModal();
 }
 function editPosition(id){const p=positions.find(x=>x.id===id);if(p)openPositionDialog(p)}
 async function savePosition(payload){
   if(!supabase||!user){$("asset-error").textContent="Tu sesión no está activa. Vuelve a iniciar sesión.";return false;}
   if(!payload.name||!payload.ticker||!Number.isFinite(payload.quantity)||payload.quantity<0||!Number.isFinite(payload.average_cost_eur)||payload.average_cost_eur<0){$("asset-error").textContent="Revisa el nombre, ticker, cantidad y coste medio.";return false;}
-  let {id,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};
+  let {id,manual_price,manual_date,...fields}=payload;const body={...fields,updated_at:new Date().toISOString()};
+  if(manual_price!==null&&manual_price!==undefined){
+    if(!Number.isFinite(manual_price)||manual_price<=0||!manual_date||!/^\d{4}-\d{2}-\d{2}$/.test(manual_date)){ $("asset-error").textContent="Para guardar un valor liquidativo manual, indica un precio mayor que cero y su fecha.";return false; }
+    if(fields.asset_type!=="fund"){ $("asset-error").textContent="El precio manual está reservado para fondos de inversión.";return false; }
+    Object.assign(body,{current_price_eur:manual_price,quote_currency:"EUR",quote_updated_at:new Date().toISOString(),quote_provider:"Manual (valor liquidativo)",quote_datetime:manual_date,quote_status:"manual",quote_error:null});
+  }
   try {
     if(!id){
       let lookup=supabase.from("investment_positions").select("id,name,ticker,mic_code").eq("ticker",fields.ticker);
@@ -310,7 +318,8 @@ $("position-form").addEventListener("submit",async e=>{
   e.preventDefault();const form=e.currentTarget,submit=form.querySelector('button[type="submit"]'),oldText=submit.textContent;submit.disabled=true;submit.textContent="Guardando…";$("asset-error").textContent="";
   try {
     const editId=$("position-dialog").dataset.editId||null;
-    const saved=await savePosition({id:editId||undefined,name:$("asset-name").value.trim(),ticker:$("asset-ticker").value.trim().toUpperCase(),asset_type:$("asset-type").value,isin:$("asset-isin").value.trim().toUpperCase()||null,mic_code:$("asset-mic").value.trim().toUpperCase()||null,exchange:$("asset-exchange").value.trim()||null,provider_symbol:$("asset-provider-symbol").value.trim().toUpperCase()||null,quantity:Number($("asset-quantity").value),average_cost_eur:Number($("asset-cost").value)});
+    const manualRaw=$("asset-manual-price").value.trim(),manualDate=$("asset-manual-date").value;
+    const saved=await savePosition({id:editId||undefined,name:$("asset-name").value.trim(),ticker:$("asset-ticker").value.trim().toUpperCase(),asset_type:$("asset-type").value,isin:$("asset-isin").value.trim().toUpperCase()||null,mic_code:$("asset-mic").value.trim().toUpperCase()||null,exchange:$("asset-exchange").value.trim()||null,provider_symbol:$("asset-provider-symbol").value.trim().toUpperCase()||null,quantity:Number($("asset-quantity").value),average_cost_eur:Number($("asset-cost").value),manual_price:manualRaw===""?null:Number(manualRaw),manual_date:manualDate||null});
     if(saved){form.reset();$("position-dialog").close();}
   } catch(error){console.error(error);$("asset-error").textContent=`Error inesperado: ${error?.message||error}`;}
   finally{submit.disabled=false;submit.textContent=oldText;}
@@ -320,7 +329,8 @@ async function refreshQuotes(){
   $("refresh-quotes").disabled=true;
   $("quote-status").textContent=`Consultando ${positions.length} activos por bloques…`;
   try{
-    const payload=positions.map(p=>({id:p.id,name:p.name,ticker:p.ticker,isin:p.isin||null,mic_code:p.mic_code||null,exchange:p.exchange||null,provider_symbol:p.provider_symbol||null,asset_type:p.asset_type}));
+    const manualPositions=positions.filter(p=>p.quote_status==="manual"||p.quote_provider==="Manual (valor liquidativo)");
+    const payload=positions.filter(p=>!manualPositions.some(m=>m.id===p.id)).map(p=>({id:p.id,name:p.name,ticker:p.ticker,isin:p.isin||null,mic_code:p.mic_code||null,exchange:p.exchange||null,provider_symbol:p.provider_symbol||null,asset_type:p.asset_type}));
     const quotes=[];
     const batchSize=30;
     for(let start=0;start<payload.length;start+=batchSize){
@@ -350,7 +360,8 @@ async function refreshQuotes(){
       }
     }
     await loadWealth();
-    $("quote-status").textContent=problems.length?`Actualizadas ${updated}/${positions.length}. Pendientes: ${problems.join(" · ")}`:`Cotizaciones verificadas: ${updated}/${positions.length} · ${new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}`;
+    const autoTotal=payload.length,manualNote=manualPositions.length?` · ${manualPositions.length} fondo(s) con NAV manual`:"";
+    $("quote-status").textContent=problems.length?`Actualizadas ${updated}/${autoTotal}. Pendientes: ${problems.join(" · ")}${manualNote}`:`Cotizaciones verificadas: ${updated}/${autoTotal}${manualNote} · ${new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}`;
     toast(problems.length?"Actualización parcial: revisa los avisos":"Cotizaciones verificadas correctamente");
   }catch(e){console.error(e);$("quote-status").textContent="Error al consultar cotizaciones: "+(e.message||"comprueba la función y la API key");toast("No se pudieron actualizar las cotizaciones")}
   finally{$("refresh-quotes").disabled=false}
