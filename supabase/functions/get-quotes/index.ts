@@ -38,33 +38,44 @@ function exchangeMatches(mic:string,exchange:string){
 // Amundi publishes the daily NAV for this Spanish mutual fund on its official product page.
 // We only accept a value when the page identifies the exact ISIN and includes a recent valuation date.
 function parseEuropeanNumber(raw:string){
-  const value=raw.trim().replace(/\s/g,"");
-  if(value.includes(",")&&value.includes("."))return Number(value.replace(/\./g,"").replace(",","."));
+  const value=raw.trim().replace(/\\s/g,"");
+  if(value.includes(",")&&value.includes("."))return Number(value.lastIndexOf(",")>value.lastIndexOf(".")?value.replace(/\\./g,"").replace(",","."):value.replace(/,/g,""));
   if(value.includes(","))return Number(value.replace(",","."));
   return Number(value);
 }
 async function amundiFundQuote(isin:string,positionId:string){
   if(isin!=="ES0152741031")throw new Error("ISIN de fondo Amundi no configurado");
-  const url="https://www.amundi.es/retail/dl/doc/monthly-factsheet/"+isin+"/SPA/ESP/RETAIL/AMUNDI";
-  const response=await fetch(url,{headers:{"Accept":"text/html,application/xhtml+xml","Accept-Language":"es-ES,es;q=0.9","User-Agent":"Mozilla/5.0 (compatible; MargenPersonal/1.0)"}});
-  if(!response.ok)throw new Error("Amundi respondió HTTP "+response.status);
-  const html=await response.text();
-  if(!html.includes(isin))throw new Error("La ficha de Amundi no ha confirmado el ISIN del fondo");
-  const decoded=html.replace(/&nbsp;|&#160;/gi," ").replace(/&euro;|&#8364;/gi,"€").replace(/&amp;/gi,"&").replace(/&#x2F;/gi,"/");
-  const plain=decoded.replace(/<[^>]*>/g," ").replace(/\s+/g," ");
-  const source=plain.toLowerCase().indexOf("valor liquidativo")>=0?plain:decoded;
-  const at=source.toLowerCase().indexOf("valor liquidativo");
-  if(at<0)throw new Error("La ficha oficial no ha devuelto el valor liquidativo en un formato reconocible");
-  const block=source.slice(at,at+900);
-  const dateMatch=block.match(/(?:a\s*)?(\d{2}[\/. -]\d{2}[\/. -]\d{4})/i);
-  const numbers=block.match(/\b\d{1,3}(?:[.,]\d{3})*[.,]\d{4,}\b/g)||[];
-  const priceRaw=numbers.map(x=>({raw:x,value:parseEuropeanNumber(x)})).find(x=>Number.isFinite(x.value)&&x.value>0&&x.value<100000);
-  if(!dateMatch||!priceRaw)throw new Error("Amundi no ha devuelto una fecha y un valor liquidativo válidos");
-  const parts=dateMatch[1].split(/[\/. -]/).map(Number),date=new Date(Date.UTC(parts[2],parts[1]-1,parts[0]));
-  if(!Number.isFinite(date.getTime()))throw new Error("Fecha de valoración de Amundi no válida");
-  const age=(Date.now()-date.getTime())/86400000;
-  if(age>45||age< -0.25)throw new Error("El último valor liquidativo publicado por Amundi es antiguo ("+dateMatch[1]+")");
-  return {position_id:positionId,symbol:isin,mic_code:"",exchange:"Amundi",currency:"EUR",price:priceRaw.value,price_eur:priceRaw.value,datetime:date.toISOString().slice(0,10),validated:true,provider:"Amundi (ficha mensual, NAV)"};
+  const urls=[
+    "https://www.amundi.es/retail/product/view/"+isin,
+    "https://www.amundi.es/inversor-profesional/product/view/"+isin
+  ];
+  let lastError="Amundi no ha devuelto datos";
+  for(const url of urls){
+    try{
+      const response=await fetch(url,{headers:{"Accept":"text/html,application/xhtml+xml","Accept-Language":"es-ES,es;q=0.9","User-Agent":"Mozilla/5.0 (compatible; MargenPersonal/1.0)"}});
+      if(!response.ok){lastError="Amundi respondió HTTP "+response.status;continue;}
+      const html=await response.text();
+      if(!html.includes(isin)){lastError="La respuesta de Amundi no confirma el ISIN";continue;}
+      const decoded=html.replace(/&nbsp;|&#160;/gi," ").replace(/&euro;|&#8364;/gi,"€").replace(/&amp;/gi,"&").replace(/&#x2F;/gi,"/");
+      const plain=decoded.replace(/<script[\\s\\S]*?<\\/script>/gi," ").replace(/<style[\\s\\S]*?<\\/style>/gi," ").replace(/<[^>]*>/g," ").replace(/\\s+/g," ");
+      const at=plain.toLowerCase().indexOf("valor liquidativo");
+      if(at<0){lastError="La página de Amundi ha devuelto la pantalla de perfil/cookies, no el valor liquidativo";continue;}
+      const block=plain.slice(at,at+1200);
+      const match=block.match(/valor\\s+liquidativo\\s*(?:a\\s*)?(\\d{2}[\\/. -]\\d{2}[\\/. -]\\d{2,4})\\s*([0-9][0-9.,]*)\\s*€/i)
+        ||block.match(/(?:a\\s*)?(\\d{2}[\\/. -]\\d{2}[\\/. -]\\d{2,4})\\s*([0-9][0-9.,]*)\\s*€/i);
+      if(!match){lastError="Amundi no ha devuelto fecha y NAV en el formato esperado";continue;}
+      const price=parseEuropeanNumber(match[2]);
+      if(!Number.isFinite(price)||price<=0||price>100000){lastError="El NAV publicado no es válido";continue;}
+      const parts=match[1].split(/[\\/. -]/).map(Number);
+      const year=parts[2]<100?2000+parts[2]:parts[2];
+      const date=new Date(Date.UTC(year,parts[1]-1,parts[0]));
+      if(!Number.isFinite(date.getTime())){lastError="Fecha de valoración de Amundi no válida";continue;}
+      const age=(Date.now()-date.getTime())/86400000;
+      if(age>7||age< -0.25){lastError="El último NAV de Amundi es antiguo ("+match[1]+")";continue;}
+      return {position_id:positionId,symbol:isin,mic_code:"",exchange:"Amundi",currency:"EUR",price,price_eur:price,datetime:date.toISOString().slice(0,10),validated:true,provider:"Amundi (valor liquidativo oficial)"};
+    }catch(e){lastError=e instanceof Error?e.message:"Error consultando Amundi";}
+  }
+  throw new Error(lastError);
 }
 
 async function yahooChart(symbol:string){
