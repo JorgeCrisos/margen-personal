@@ -34,6 +34,39 @@ function exchangeMatches(mic:string,exchange:string){
   const patterns:Record<string,RegExp>={XMAD:/(MCE|MADRID)/,XNAS:/(NASDAQ|NMS)/,XNYS:/(NYSE|NYQ)/,XETR:/(XETRA|GER)/,XFRA:/(FRANKFURT|FRA)/,XPAR:/(PARIS|PAR)/,XAMS:/(AMSTERDAM|AMS)/,XMIL:/(MILAN|MIL)/,XLON:/(LONDON|LSE)/,XSWX:/(SWISS|SIX)/,XBRU:/(BRUSSELS|BRU)/,XLIS:/(LISBON|LIS)/,XCSE:/(COPENHAGEN|CPH)/,XSTO:/(STOCKHOLM|STO)/,XHEL:/(HELSINKI|HEL)/,XOSL:/(OSLO|OSL)/};
   return !!patterns[mic]&&patterns[mic].test(e);
 }
+
+// Amundi publishes the daily NAV for this Spanish mutual fund on its official product page.
+// We only accept a value when the page identifies the exact ISIN and includes a recent valuation date.
+function parseEuropeanNumber(raw:string){
+  const value=raw.trim().replace(/\\s/g,"");
+  if(value.includes(",")&&value.includes("."))return Number(value.replace(/\\./g,"").replace(",","."));
+  if(value.includes(","))return Number(value.replace(",","."));
+  return Number(value);
+}
+async function amundiFundQuote(isin:string,positionId:string){
+  if(isin!=="ES0152741031")throw new Error("ISIN de fondo Amundi no configurado");
+  const url="https://www.amundi.es/inversor-profesional/product/view/"+isin;
+  const response=await fetch(url,{headers:{"Accept":"text/html,application/xhtml+xml","Accept-Language":"es-ES,es;q=0.9","User-Agent":"Mozilla/5.0 (compatible; MargenPersonal/1.0)"}});
+  if(!response.ok)throw new Error("Amundi respondió HTTP "+response.status);
+  const html=await response.text();
+  if(!html.includes(isin))throw new Error("La ficha de Amundi no ha confirmado el ISIN del fondo");
+  const decoded=html.replace(/&nbsp;|&#160;/gi," ").replace(/&euro;|&#8364;/gi,"€").replace(/&amp;/gi,"&").replace(/&#x2F;/gi,"/");
+  const plain=decoded.replace(/<[^>]*>/g," ").replace(/\\s+/g," ");
+  const source=plain.toLowerCase().indexOf("valor liquidativo")>=0?plain:decoded;
+  const at=source.toLowerCase().indexOf("valor liquidativo");
+  if(at<0)throw new Error("La ficha oficial no ha devuelto el valor liquidativo en un formato reconocible");
+  const block=source.slice(at,at+900);
+  const dateMatch=block.match(/(?:a\\s*)?(\\d{2}[\\/. -]\\d{2}[\\/. -]\\d{4})/i);
+  const numbers=block.match(/\\b\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{4,}\\b/g)||[];
+  const priceRaw=numbers.map(x=>({raw:x,value:parseEuropeanNumber(x)})).find(x=>Number.isFinite(x.value)&&x.value>0&&x.value<100000);
+  if(!dateMatch||!priceRaw)throw new Error("Amundi no ha devuelto una fecha y un valor liquidativo válidos");
+  const parts=dateMatch[1].split(/[\\/. -]/).map(Number),date=new Date(Date.UTC(parts[2],parts[1]-1,parts[0]));
+  if(!Number.isFinite(date.getTime()))throw new Error("Fecha de valoración de Amundi no válida");
+  const age=(Date.now()-date.getTime())/86400000;
+  if(age>7||age< -0.25)throw new Error("El último valor liquidativo publicado por Amundi es antiguo ("+dateMatch[1]+")");
+  return {position_id:positionId,symbol:isin,mic_code:"",exchange:"Amundi",currency:"EUR",price:priceRaw.value,price_eur:priceRaw.value,datetime:date.toISOString().slice(0,10),validated:true,provider:"Amundi (valor liquidativo)"};
+}
+
 async function yahooChart(symbol:string){
   const url="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(symbol)+"?range=5d&interval=1d";
   const response=await fetch(url,{headers:{"Accept":"application/json","User-Agent":"Mozilla/5.0 MargenPersonal/1.0"}});
@@ -96,6 +129,11 @@ serve(async req=>{
       const p=raw||{},ticker=String(p.ticker||"").trim().toUpperCase(),id=String(p.id||"");
       if(!id||!ticker){quotes.push({position_id:id,error:"Falta el identificador o ticker"});continue;}
       const known=KNOWN[ticker],expectedIsin=String(p.isin||known?.isin||"").toUpperCase();
+      if(expectedIsin==="ES0152741031"){
+        try{quotes.push(await amundiFundQuote(expectedIsin,id));}
+        catch(e){quotes.push({position_id:id,error:"Amundi: "+(e instanceof Error?e.message:"No se pudo obtener el valor liquidativo")});}
+        continue;
+      }
       let mic=String(p.mic_code||known?.mic_code||"").toUpperCase();
       let exchange=String(p.exchange||known?.exchange||"");
       let symbol=String(p.provider_symbol||known?.symbol||ticker).toUpperCase();
