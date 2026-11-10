@@ -11,7 +11,9 @@ const KNOWN: Record<string,{isin:string;mic_code:string;exchange:string;symbol:s
   SXR8:{isin:"IE00B5BMR087",mic_code:"XETR",exchange:"Xetra",symbol:"SXR8",yahoo:"SXR8.DE",name:"iShares Core S&P 500"},
   "3CP":{isin:"KYG9830T1067",mic_code:"XFRA",exchange:"Frankfurt",symbol:"3CP",yahoo:"3CP.F",name:"Xiaomi"},
   NKE:{isin:"US6541061031",mic_code:"XNYS",exchange:"NYSE",symbol:"NKE",yahoo:"NKE",name:"NIKE"},
-  QDVE:{isin:"IE00B3WJKG14",mic_code:"XETR",exchange:"Xetra",symbol:"QDVE",yahoo:"QDVE.DE",name:"iShares S&P 500 Information Technology Sector UCITS ETF"}
+  QDVE:{isin:"IE00B3WJKG14",mic_code:"XETR",exchange:"Xetra",symbol:"QDVE",yahoo:"QDVE.DE",name:"iShares S&P 500 Information Technology Sector UCITS ETF"},
+  QBTS:{isin:"US26740W1099",mic_code:"XNAS",exchange:"Nasdaq",symbol:"QBTS",yahoo:"QBTS",name:"D-Wave Quantum"},
+  RQO:{isin:"US26740W1099",mic_code:"XNAS",exchange:"Nasdaq",symbol:"QBTS",yahoo:"QBTS",name:"D-Wave Quantum"}
 };
 const num=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)?n:null;};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:cors});
@@ -110,7 +112,7 @@ serve(async req=>{
       }
       let mic=String(p.mic_code||known?.mic_code||"").toUpperCase();
       let exchange=String(p.exchange||known?.exchange||"");
-      let symbol=String(p.provider_symbol||known?.symbol||ticker).toUpperCase();
+      let symbol=String(known?.symbol||p.provider_symbol||ticker).toUpperCase();
       let primaryError="Twelve Data no disponible";
       if(key){
         try{
