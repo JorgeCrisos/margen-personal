@@ -281,3 +281,63 @@ body { min-height: 100svh; }
     scroll-margin: 12px;
   }
 }
+
+
+/* v49 — viewport estable y responsive real para Safari, PWA, tablets y escritorio.
+   Evita recalcular la altura del documento con cada movimiento de las barras del navegador. */
+html {
+  min-height: 100%;
+  overflow-x: clip;
+  scroll-behavior: auto;
+}
+body {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+.shell {
+  width: 100%;
+  min-height: 100svh;
+}
+@media (min-width: 701px) and (max-width: 900px) {
+  .dashboard-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 100svh;
+  }
+  .sidebar {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    padding: 12px 16px;
+  }
+  .sidebar-brand { padding: 0 4px 12px; }
+  .sidebar-label, .sidebar-bottom { display: none; }
+  .side-nav {
+    display: flex;
+    width: 100%;
+    gap: 5px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .side-link { flex: 0 0 auto; white-space: nowrap; }
+  .dashboard-main { width: 100%; max-width: none; }
+}
+@media (max-width: 700px) {
+  body {
+    min-height: 100vh !important;
+    min-height: 100svh !important;
+    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+  .shell { min-height: 100svh; }
+  .dashboard-layout {
+    min-height: calc(100vh - 124px) !important;
+    min-height: calc(100svh - 124px) !important;
+  }
+  .transaction-dialog {
+    max-height: min(92svh, 820px);
+  }
+}
